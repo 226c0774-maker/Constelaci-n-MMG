@@ -62,15 +62,17 @@
       width: 300px;
       display: none;
     }
-    /* Botón Focus Súper Ajustado */
-    #view-toggle-btn {
+    /* Botón Focus y Control de Audio Superior */
+    #top-bar {
       position: absolute;
       top: 14px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      display: inline-block;
-      width: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .top-btn {
       background: rgba(28, 24, 22, 0.88);
       border: 1px solid rgba(212, 163, 115, 0.4);
       color: #e6ccb2;
@@ -84,9 +86,19 @@
       transition: all 0.2s ease;
       white-space: nowrap;
     }
-    #view-toggle-btn:hover {
+    .top-btn:hover {
       background: rgba(212, 163, 115, 0.25);
       color: #fff;
+    }
+    .top-btn.active-audio {
+      background: #588157;
+      color: #fff;
+      border-color: #a3b18a;
+    }
+    .top-btn.muted-audio {
+      background: #9a031e;
+      color: #fff;
+      border-color: #e63946;
     }
     h2, h3 {
       color: #e6ccb2;
@@ -190,8 +202,17 @@
 <body>
 
   <div id="canvas-container"></div>
-  <button id="view-toggle-btn">👁️ Focus</button>
+  
+  <!-- Barra Superior de Herramientas -->
+  <div id="top-bar">
+    <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
+    <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
+  </div>
+
   <div id="notification">Notificación</div>
+
+  <!-- Audio Element Oculto para recibir la voz remota -->
+  <audio id="remote-audio" autoplay></audio>
 
   <!-- Panel Sincronización -->
   <div id="sync-panel" class="panel">
@@ -306,7 +327,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -328,6 +349,19 @@
     let lookAtMode = false;
     let linkMode = false;
 
+    // --- WEBRTC CONFIGURACIÓN AUDIO EN VIVO ---
+    let localStream = null;
+    let peerConnection = null;
+    let isAudioConnected = false;
+    let isMuted = false;
+
+    const rtcServers = {
+      iceServers: [
+        { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+      ],
+      iceCandidatePoolSize: 10,
+    };
+
     signInAnonymously(auth)
       .then(() => showNotif("Conectado a Backend"))
       .catch((err) => console.error("Error Auth:", err));
@@ -338,6 +372,100 @@
       notif.style.display = 'block';
       setTimeout(() => { notif.style.display = 'none'; }, 2800);
     }
+
+    // --- MANEJO DE AUDIO (WEBRTC) ---
+    async function toggleAudioConnection() {
+      const audioBtn = document.getElementById('audio-toggle-btn');
+      
+      if (!currentRoomId) {
+        return alert("Primero debes crear o unirte a una sala para activar el audio.");
+      }
+
+      if (!isAudioConnected) {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          isAudioConnected = true;
+          audioBtn.innerText = "🎙️ Micrófono Activo";
+          audioBtn.classList.add('active-audio');
+          showNotif("Micrófono conectado");
+
+          setupWebRTCConnection();
+        } catch (err) {
+          console.error("Error al acceder al micrófono:", err);
+          showNotif("Permiso de micrófono denegado");
+        }
+      } else {
+        // Alternar Mute / Unmute
+        isMuted = !isMuted;
+        localStream.getAudioTracks()[0].enabled = !isMuted;
+        if (isMuted) {
+          audioBtn.innerText = "🔇 Mic Silenciado";
+          audioBtn.classList.remove('active-audio');
+          audioBtn.classList.add('muted-audio');
+          showNotif("Micrófono silenciado");
+        } else {
+          audioBtn.innerText = "🎙️ Micrófono Activo";
+          audioBtn.classList.remove('muted-audio');
+          audioBtn.classList.add('active-audio');
+          showNotif("Micrófono activo");
+        }
+      }
+    }
+
+    async function setupWebRTCConnection() {
+      peerConnection = new RTCPeerConnection(rtcServers);
+
+      // Agregar pistas de audio local
+      localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+      });
+
+      // Recibir stream remoto
+      peerConnection.ontrack = event => {
+        const remoteAudio = document.getElementById('remote-audio');
+        remoteAudio.srcObject = event.streams[0];
+      };
+
+      const roomRef = doc(db, "rooms", currentRoomId);
+      const callerCandidates = collection(roomRef, "callerCandidates");
+      const calleeCandidates = collection(roomRef, "calleeCandidates");
+
+      peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+          addDoc(callerCandidates, event.candidate.toJSON());
+        }
+      };
+
+      // Crear oferta SDP
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      const roomWithOffer = {
+        offer: { type: offer.type, sdp: offer.sdp }
+      };
+      await setDoc(roomRef, roomWithOffer, { merge: true });
+
+      // Escuchar respuestas remotas
+      onSnapshot(roomRef, async snapshot => {
+        const data = snapshot.data();
+        if (peerConnection && !peerConnection.currentRemoteDescription && data && data.answer) {
+          const answer = new RTCSessionDescription(data.answer);
+          await peerConnection.setRemoteDescription(answer);
+        }
+      });
+
+      // Escuchar candidatos remotos
+      onSnapshot(calleeCandidates, snapshot => {
+        snapshot.docChanges().forEach(async change => {
+          if (change.type === 'added') {
+            const candidate = new RTCIceCandidate(change.doc.data());
+            await peerConnection.addIceCandidate(candidate);
+          }
+        });
+      });
+    }
+
+    document.getElementById('audio-toggle-btn').addEventListener('click', toggleAudioConnection);
 
     // --- ESCENA THREE.JS ---
     const container = document.getElementById('canvas-container');
@@ -396,7 +524,6 @@
       exclusion: 0x212529
     };
 
-    // --- CONSTRUCTOR CON FACCIONES HUMANAS (OJOS Y BOCA) ---
     function buildHumanMesh(type = 'adult-m') {
       const group = new THREE.Group();
       const bodyGroup = new THREE.Group();
@@ -429,15 +556,12 @@
         mesh.castShadow = true;
         bodyGroup.add(mesh);
       } else {
-        // === ANATOMÍA HUMANA CON ROSTRO ===
-        // Cabeza
         const headGeo = new THREE.SphereGeometry(0.27 * scaleXZ, 24, 24);
         const head = new THREE.Mesh(headGeo, mat);
         head.position.y = (1.65 * scaleY);
         head.castShadow = true;
         bodyGroup.add(head);
 
-        // Ojos
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2b211b });
         const eyeGeo = new THREE.SphereGeometry(0.035 * scaleXZ, 12, 12);
         
@@ -449,27 +573,23 @@
         eyeR.position.set(0.095 * scaleXZ, head.position.y + 0.04 * scaleY, 0.23 * scaleXZ);
         bodyGroup.add(eyeR);
 
-        // Boca
         const mouthMat = new THREE.MeshBasicMaterial({ color: 0x5a3d31 });
         const mouthGeo = new THREE.BoxGeometry(0.08 * scaleXZ, 0.02 * scaleY, 0.02 * scaleXZ);
         const mouth = new THREE.Mesh(mouthGeo, mouthMat);
         mouth.position.set(0, head.position.y - 0.08 * scaleY, 0.25 * scaleXZ);
         bodyGroup.add(mouth);
 
-        // Nariz
         const noseGeo = new THREE.ConeGeometry(0.04 * scaleXZ, 0.12 * scaleY, 12);
         noseGeo.rotateX(Math.PI / 2);
         const nose = new THREE.Mesh(noseGeo, mat);
         nose.position.set(0, head.position.y - 0.01 * scaleY, 0.27 * scaleXZ);
         bodyGroup.add(nose);
 
-        // Cuello
         const neckGeo = new THREE.CylinderGeometry(0.09 * scaleXZ, 0.1 * scaleXZ, 0.12 * scaleY, 12);
         const neck = new THREE.Mesh(neckGeo, mat);
         neck.position.y = (1.48 * scaleY);
         bodyGroup.add(neck);
 
-        // Torso
         const torsoTopWidth = isFemale ? 0.30 : 0.38;
         const torsoBotWidth = isFemale ? 0.22 : 0.26;
         const torsoGeo = new THREE.CylinderGeometry(torsoTopWidth * scaleXZ, torsoBotWidth * scaleXZ, 0.55 * scaleY, 16);
@@ -478,14 +598,12 @@
         torso.castShadow = true;
         bodyGroup.add(torso);
 
-        // Cadera
         const hipGeo = new THREE.CylinderGeometry(torsoBotWidth * scaleXZ, (isFemale ? 0.28 : 0.24) * scaleXZ, 0.3 * scaleY, 16);
         const hip = new THREE.Mesh(hipGeo, mat);
         hip.position.y = (0.78 * scaleY);
         hip.castShadow = true;
         bodyGroup.add(hip);
 
-        // Piernas
         const legGeo = new THREE.CylinderGeometry(0.08 * scaleXZ, 0.06 * scaleXZ, 0.65 * scaleY, 12);
         const legL = new THREE.Mesh(legGeo, mat);
         legL.position.set(-0.11 * scaleXZ, 0.325 * scaleY, 0);
@@ -497,7 +615,6 @@
         legR.castShadow = true;
         bodyGroup.add(legR);
 
-        // Brazos
         const armGeo = new THREE.CylinderGeometry(0.065 * scaleXZ, 0.05 * scaleXZ, 0.55 * scaleY, 12);
         const armL = new THREE.Mesh(armGeo, mat);
         armL.position.set((-torsoTopWidth - 0.05) * scaleXZ, 1.1 * scaleY, 0);
@@ -512,7 +629,6 @@
         bodyGroup.add(armR);
       }
 
-      // Aura
       const auraGeo = new THREE.RingGeometry(0.55 * scaleXZ, 0.75 * scaleXZ, 32);
       auraGeo.rotateX(-Math.PI / 2);
       const auraMat = new THREE.MeshBasicMaterial({ color: EMOTION_COLORS.neutral, side: THREE.DoubleSide });
@@ -520,7 +636,6 @@
       aura.position.y = 0.02;
       group.add(aura);
 
-      // Sprite Billboard para Etiqueta
       const canvas = document.createElement('canvas');
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
@@ -542,7 +657,6 @@
       return group;
     }
 
-    // --- ETIQUETA DINÁMICA AJUSTADA AL TAMAÑO DEL TEXTO ---
     function updateLabel(avatarGroup, text) {
       const canvas = avatarGroup.userData.labelCanvas;
       const ctx = canvas.getContext('2d');
@@ -558,7 +672,6 @@
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
 
-      // Re-aplicar estilos en canvas redimensionado
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
       ctx.fillStyle = "rgba(18, 14, 12, 0.90)";
       ctx.strokeStyle = "rgba(212, 163, 115, 0.85)";
@@ -577,7 +690,6 @@
 
       avatarGroup.userData.labelTexture.needsUpdate = true;
 
-      // Ajustar escala visual proporcional para evitar superposición
       const spriteScaleX = (canvasWidth / 120) * 0.7;
       const spriteScaleY = (canvasHeight / 120) * 0.7;
       avatarGroup.userData.labelSprite.scale.set(spriteScaleX, spriteScaleY, 1);
@@ -656,7 +768,7 @@
     let dragTarget = null;
 
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.panel') || e.target.id === 'view-toggle-btn') return;
+      if (e.target.closest('.panel') || e.target.closest('#top-bar')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
