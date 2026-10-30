@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-stone-900 text-stone-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constelaciones Familiares 3D - Espacio Sistémico Terapéutico</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Google Fonts: Playfair Display & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Playfair Display"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            warm: {
+              50: '#faf8f5',
+              100: '#f4efe6',
+              200: '#e8ddcc',
+              300: '#d7c4a8',
+              400: '#c2a581',
+              500: '#af875f',
+              600: '#9b6e4d',
+              700: '#7c543f',
+              800: '#664537',
+              900: '#4a332a',
+              950: '#2c1e18',
+            },
+            terracotta: {
+              400: '#e07a5f',
+              500: '#d16040',
+              600: '#b84a2d',
+            },
+            sage: {
+              100: '#eef3ed',
+              300: '#b8ccb5',
+              500: '#81a37f',
+              700: '#4f6c4e',
+            },
+            sand: '#f3ece2',
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Custom scrollbar for panel views */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(44, 30, 24, 0.4);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(194, 165, 129, 0.3);
+      border-radius: 6px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(194, 165, 129, 0.6);
+    }
+    canvas {
+      outline: none;
+    }
+    .glass-warm {
+      background: rgba(38, 26, 21, 0.82);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 203, 175, 0.12);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden font-sans antialiased text-stone-200 bg-warm-950 select-none">
+
+  <!-- Top Navigation Header -->
+  <header class="h-16 border-b border-warm-800/50 bg-warm-950/80 backdrop-blur-md px-6 flex items-center justify-between z-20 shrink-0 shadow-lg">
+    <div class="flex items-center space-x-3.5">
+      <div class="p-2.5 bg-amber-500/15 text-amber-200 rounded-2xl border border-amber-400/20 shadow-inner">
+        <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="font-serif font-medium text-base tracking-wide text-amber-100 flex items-center gap-2.5">
+          CAMPO SISTÉMICO 3D
+          <span class="text-[10px] font-sans uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 font-medium">Espacio Sagrado</span>
+        </h1>
+        <p class="text-xs text-warm-300/70 font-light">Facilitación Terapéutica Humana & Acompañamiento IA</p>
+      </div>
+    </div>
+
+    <!-- Room / Multiplayer Controls & Status -->
+    <div class="flex items-center space-x-3 text-xs">
+      <!-- Session / Sync Status Indicator -->
+      <div id="roomStatusBadge" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-warm-900/90 border border-warm-700/50 text-warm-200 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="statusDot"></span>
+        <span id="statusText" class="font-medium">Sesión Privada</span>
+      </div>
+
+      <!-- Room Code Widget -->
+      <div class="flex items-center bg-warm-900/90 border border-warm-700/50 rounded-xl overflow-hidden p-0.5 shadow-sm">
+        <input type="text" id="roomIdInput" placeholder="CÓDIGO SALA" class="bg-transparent px-3 py-1 text-xs text-amber-100 placeholder-warm-400/50 focus:outline-none w-28 uppercase font-mono tracking-widest">
+        <button id="btnJoinRoom" class="bg-terracotta-500 hover:bg-terracotta-400 text-amber-50 px-3.5 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
+          Conectar
+        </button>
+      </div>
+
+      <button id="btnCreateRoom" class="bg-warm-800/80 hover:bg-warm-700/80 border border-warm-600/40 text-warm-100 px-3.5 py-1.5 rounded-xl font-medium flex items-center gap-1.5 transition shadow-sm">
+        <i data-lucide="share-2" class="w-3.5 h-3.5 text-amber-300"></i>
+        <span>Enlace Terapéutico</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- Left Controls & Element Manager Panel -->
+    <aside class="w-80 border-r border-warm-800/40 bg-warm-950/85 backdrop-blur-md flex flex-col z-10 shrink-0 shadow-2xl">
+      <div class="p-4 border-b border-warm-800/40 flex items-center justify-between">
+        <h2 class="font-serif text-sm font-medium tracking-wide text-amber-200 flex items-center gap-2">
+          <i data-lucide="users" class="w-4 h-4 text-terracotta-400"></i>
+          Representantes del Sistema
+        </h2>
+        <span id="figureCount" class="text-xs bg-warm-900 text-warm-300 px-2.5 py-0.5 rounded-full border border-warm-700/50 font-medium">0</span>
+      </div>
+
+      <!-- Add Representative Form -->
+      <div class="p-4 border-b border-warm-800/40 space-y-3.5 bg-warm-900/30">
+        <div>
+          <label class="text-[11px] font-medium text-warm-300/80 uppercase tracking-wider block mb-1">Nombre / Rol Sistémico</label>
+          <input type="text" id="newFigLabel" placeholder="Ej: Madre, Síntoma, Niño Interior..." class="w-full bg-warm-900/90 border border-warm-700/60 rounded-xl px-3 py-2 text-xs text-stone-100 placeholder-warm-400/40 focus:border-amber-400/60 focus:outline-none transition">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="text-[11px] font-medium text-warm-300/80 uppercase tracking-wider block mb-1">Forma / Energía</label>
+            <select id="newFigType" class="w-full bg-warm-900/90 border border-warm-700/60 rounded-xl px-2.5 py-2 text-xs text-stone-100 focus:outline-none cursor-pointer">
+              <option value="male">Hombre (Cilindro Cálido)</option>
+              <option value="female">Mujer (Cono Suave)</option>
+              <option value="child">Hijo / Niñez (Pequeño)</option>
+              <option value="abstract">Síntoma / Bloqueo (Orgánico)</option>
+              <option value="resource">Recurso / Guía (Estrella)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-medium text-warm-300/80 uppercase tracking-wider block mb-1">Tono Cálido</label>
+            <div class="flex items-center space-x-1.5">
+              <input type="color" id="newFigColor" value="#e07a5f" class="w-9 h-8 bg-transparent cursor-pointer rounded-lg border border-warm-700/60 p-0.5">
+              <span class="text-[10px] text-warm-300 font-mono" id="colorValHex">#E07A5F</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="btnAddFigure" class="w-full bg-terracotta-500 hover:bg-terracotta-400 text-amber-50 font-medium py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-terracotta-600/20 active:scale-[0.99]">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          Integrar al Campo
+        </button>
+      </div>
+
+      <!-- List of Figures in Scene -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-2" id="figuresList">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Quick Actions / Tools -->
+      <div class="p-3.5 border-t border-warm-800/40 bg-warm-900/40 space-y-2.5">
+        <label class="text-[11px] font-medium text-warm-300/80 uppercase tracking-wider block">Miradas & Lazos Visibles</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btnStartConnection" class="bg-warm-900 hover:bg-warm-800 border border-warm-700/60 text-warm-200 py-2 px-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="link" class="w-3.5 h-3.5 text-amber-300"></i>
+            Trazar Vínculo
+          </button>
+          <button id="btnClearConnections" class="bg-warm-900 hover:bg-warm-800 border border-warm-700/60 text-warm-200 py-2 px-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-300"></i>
+            Limpiar Lazos
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 3D Canvas Viewport -->
+    <main class="flex-1 relative bg-warm-950 overflow-hidden" id="canvasContainer">
+      
+      <!-- Interactive Instructions Overlay -->
+      <div class="absolute top-5 left-5 z-10 glass-warm rounded-2xl p-3.5 text-xs text-warm-200 pointer-events-none space-y-1.5 max-w-xs shadow-2xl">
+        <p class="font-serif text-sm font-medium text-amber-200 flex items-center gap-1.5">
+          <i data-lucide="hand" class="w-4 h-4 text-terracotta-400"></i> Presencia en el Campo:
+        </p>
+        <p class="text-warm-300/80">• <strong>Clic + Arrastrar figura:</strong> Posicionar suavemente.</p>
+        <p class="text-warm-300/80">• <strong>Clic derecho + Arrastrar:</strong> Rotar plano de visión.</p>
+        <p class="text-warm-300/80">• <strong>Rueda del ratón:</strong> Zoom y perspectiva.</p>
+      </div>
+
+      <!-- Selected Element Inspector Float Modal -->
+      <div id="inspectorPanel" class="hidden absolute bottom-5 left-5 z-10 glass-warm rounded-2xl p-4 w-72 text-xs shadow-2xl space-y-3.5">
+        <div class="flex items-center justify-between border-b border-warm-700/40 pb-2.5">
+          <span class="font-serif font-medium text-sm text-amber-100 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full shadow-sm" id="inspectColorDot"></span>
+            <span id="inspectLabel">Representante</span>
+          </span>
+          <button id="btnCloseInspector" class="text-warm-400 hover:text-amber-100 transition">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="space-y-2.5">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-[10px] text-warm-300/80 uppercase tracking-wider">Dirección de la Mirada</label>
+              <span id="inspectRotVal" class="text-[10px] text-amber-300 font-mono">0º</span>
+            </div>
+            <input type="range" id="inspectRotation" min="0" max="360" value="0" class="w-full accent-terracotta-500 cursor-pointer">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-warm-300/80 uppercase tracking-wider block mb-1">Sensación / Estado Sistémico</label>
+            <select id="inspectState" class="w-full bg-warm-900 border border-warm-700/60 rounded-xl p-2 text-xs text-warm-100 focus:outline-none cursor-pointer">
+              <option value="neutral">Presente / Disponible</option>
+              <option value="blocked">Mirando al pasado / Anclado</option>
+              <option value="excluded">Excluido / Aislado</option>
+              <option value="burdened">Cargando un peso ajeno</option>
+              <option value="reconciled">Orientado hacia la Vida</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-1 flex gap-2">
+          <button id="btnDeleteSelected" class="w-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-400/30 py-2 rounded-xl font-medium flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+            Honrar y Retirar
+          </button>
+        </div>
+      </div>
+
+      <!-- 3D Canvas Container -->
+      <div id="threeCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+    </main>
+
+    <!-- Right AI Assistant & Systemic Insights Panel -->
+    <aside class="w-96 border-l border-warm-800/40 bg-warm-950/85 backdrop-blur-md flex flex-col z-10 shrink-0 shadow-2xl">
+      
+      <!-- Panel Header -->
+      <div class="p-4 border-b border-warm-800/40 flex items-center justify-between bg-warm-900/30">
+        <div class="flex items-center space-x-2.5">
+          <div class="p-2 bg-sage-500/20 text-sage-300 rounded-xl border border-sage-500/30">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="font-serif text-sm font-medium tracking-wide text-amber-100">Mirada Sistémica IA</h2>
+            <p class="text-[10px] text-warm-300/70">Lectura amorosa de dinámicas</p>
+          </div>
+        </div>
+        <button id="btnAnalyzeField" class="bg-sage-700 hover:bg-sage-500 text-amber-50 text-xs px-3.5 py-2 rounded-xl font-medium flex items-center gap-1.5 transition shadow-lg shadow-sage-700/20 active:scale-[0.99]">
+          <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+          Sintetizar Campo
+        </button>
+      </div>
+
+      <!-- Content Area -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        
+        <!-- AI Real-time Insight Card -->
+        <div class="glass-warm rounded-2xl p-4 space-y-3 relative overflow-hidden border border-warm-700/40">
+          <div class="absolute -top-12 -right-12 w-28 h-28 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+          <div class="flex items-center justify-between text-xs text-amber-200 font-medium border-b border-warm-700/40 pb-2.5">
+            <span class="flex items-center gap-1.5 font-serif text-sm">
+              <i data-lucide="eye" class="w-4 h-4 text-terracotta-400"></i>
+              Comprensión del Movimiento
+            </span>
+            <span id="aiStatusTag" class="text-[10px] px-2.5 py-0.5 rounded-full bg-warm-900 text-warm-300 border border-warm-700/50">Disponible</span>
+          </div>
+
+          <div id="aiAnalysisOutput" class="text-xs text-warm-200/90 leading-relaxed min-h-[110px] space-y-2">
+            <p class="text-warm-300/70 italic font-light">Haz clic en <strong>"Sintetizar Campo"</strong> para recibir hipótesis terapéuticas, patrones de lealtad invisible, exclusiones y frases sanadoras basadas en las posiciones actuales.</p>
+          </div>
+        </div>
+
+        <!-- Healing Sentences Helper -->
+        <div class="space-y-2.5">
+          <h3 class="text-xs font-serif font-medium text-amber-200/90 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="quote" class="w-3.5 h-3.5 text-terracotta-400"></i>
+            Frases Sanadoras Terapéuticas
+          </h3>
+
+          <div class="space-y-2 text-xs">
+            <button class="w-full text-left bg-warm-900/60 hover:bg-warm-900 border border-warm-700/40 p-3 rounded-xl text-warm-200 transition flex justify-between items-center group shadow-sm" onclick="copyPhrase('Te honro y te doy un lugar en mi corazón.')">
+              <span>"Te honro y te doy un lugar en mi corazón."</span>
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-warm-400 group-hover:text-amber-300 transition"></i>
+            </button>
+            <button class="w-full text-left bg-warm-900/60 hover:bg-warm-900 border border-warm-700/40 p-3 rounded-xl text-warm-200 transition flex justify-between items-center group shadow-sm" onclick="copyPhrase('Lo tuyo contigo, lo mío conmigo.')">
+              <span>"Lo tuyo contigo, lo mío conmigo."</span>
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-warm-400 group-hover:text-amber-300 transition"></i>
+            </button>
+            <button class="w-full text-left bg-warm-900/60 hover:bg-warm-900 border border-warm-700/40 p-3 rounded-xl text-warm-200 transition flex justify-between items-center group shadow-sm" onclick="copyPhrase('Gracias por la vida, la tomo con todo lo que costó.')">
+              <span>"Gracias por la vida, la tomo con todo lo que costó."</span>
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-warm-400 group-hover:text-amber-300 transition"></i>
+            </button>
+            <button class="w-full text-left bg-warm-900/60 hover:bg-warm-900 border border-warm-700/40 p-3 rounded-xl text-warm-200 transition flex justify-between items-center group shadow-sm" onclick="copyPhrase('Tú eres el grande, yo soy el pequeño.')">
+              <span>"Tú eres el grande, yo soy el pequeño."</span>
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-warm-400 group-hover:text-amber-300 transition"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Orders of Love Reference -->
+        <div class="glass-warm rounded-2xl p-3.5 space-y-2 text-xs border border-warm-700/40">
+          <span class="font-serif font-medium text-amber-200 flex items-center gap-1.5">
+            <i data-lucide="sun" class="w-4 h-4 text-amber-400"></i>
+            Pilares: Órdenes del Amor
+          </span>
+          <ul class="text-warm-300/80 space-y-1.5 list-disc list-inside text-[11px] font-light">
+            <li><strong class="text-warm-200 font-normal">Pertenencia:</strong> Nadie puede ser excluido del alma familiar.</li>
+            <li><strong class="text-warm-200 font-normal">Precedencia:</strong> Los que llegaron antes tienen prioridad.</li>
+            <li><strong class="text-warm-200 font-normal">Equilibrio:</strong> Balance amoroso entre Dar y Tomar.</li>
+          </ul>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Application Logic Script -->
+  <script type="module">
+    // Firebase Modular Imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // App State
+    const state = {
+      appId: typeof __app_id !== 'undefined' ? __app_id : 'constelaciones-3d-warm-app',
+      roomId: null,
+      isHost: false,
+      user: null,
+      db: null,
+      figures: [],
+      connections: [],
+      selectedFigureId: null,
+      isConnectingMode: false,
+      connectionSourceId: null
+    };
+
+    // Firebase Initialization
+    let db, auth;
+    async function initFirebase() {
+      try {
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        if (firebaseConfig) {
+          const app = initializeApp(firebaseConfig);
+          auth = getAuth(app);
+          db = getFirestore(app);
+          state.db = db;
+
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+          state.user = auth.currentUser;
+        }
+      } catch (err) {
+        console.warn("Firebase no disponible. Operando en modo local offline:", err);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // THREE.JS CANVAS & SCENE SETUP (WARM & ORGANIC)
+    // -------------------------------------------------------------
+    let scene, camera, renderer, controls;
+    let raycaster, mouse;
+    let tableSurfaceMesh;
+    const figuresMap = new Map();
+    const linesMap = new Map();
+
+    function initThreeJS() {
+      const container = document.getElementById('threeCanvas');
+      
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a120e); // Warm dark terracotta background
+      scene.fog = new THREE.FogExp2(0x1a120e, 0.025);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 18, 22);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      container.appendChild(renderer.domElement);
+
+      // Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.02;
+      controls.minDistance = 5;
+      controls.maxDistance = 50;
+
+      // Warm Ambient & Key Lighting
+      const ambientLight = new THREE.AmbientLight(0xffecd6, 0.85); // Warm honey ambient light
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.25);
+      dirLight.position.set(12, 24, 12);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 0.5;
+      dirLight.shadow.camera.far = 50;
+      dirLight.shadow.camera.left = -16;
+      dirLight.shadow.camera.right = 16;
+      dirLight.shadow.camera.top = 16;
+      dirLight.shadow.camera.bottom = -16;
+      scene.add(dirLight);
+
+      const warmGlow = new THREE.PointLight(0xe07a5f, 0.6, 25);
+      warmGlow.position.set(0, 4, 0);
+      scene.add(warmGlow);
+
+      // -------------------------------------------------------------
+      // WARM WOODEN CIRCULAR STAGE
+      // -------------------------------------------------------------
+      const tableRadius = 14;
+      const tableHeight = 0.8;
+
+      // Procedural Soft Oak Wood Texture
+      const woodTextureCanvas = document.createElement('canvas');
+      woodTextureCanvas.width = 512;
+      woodTextureCanvas.height = 512;
+      const ctx = woodTextureCanvas.getContext('2d');
+      ctx.fillStyle = '#4a2f22';
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Soft natural grain rings
+      for (let i = 0; i < 60; i++) {
+        ctx.beginPath();
+        ctx.arc(256, 256, i * 8.5 + Math.random() * 3, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(110, 72, 52, ${0.12 + Math.random() * 0.12})`;
+        ctx.lineWidth = 2 + Math.random() * 2;
+        ctx.stroke();
+      }
+
+      const woodTexture = new THREE.CanvasTexture(woodTextureCanvas);
+
+      // Top surface plane
+      const surfaceGeo = new THREE.CircleGeometry(tableRadius, 64);
+      const surfaceMat = new THREE.MeshStandardMaterial({
+        map: woodTexture,
+        roughness: 0.35,
+        metalness: 0.05,
+        color: 0x6e4834
+      });
+      tableSurfaceMesh = new THREE.Mesh(surfaceGeo, surfaceMat);
+      tableSurfaceMesh.rotation.x = -Math.PI / 2;
+      tableSurfaceMesh.position.y = 0;
+      tableSurfaceMesh.receiveShadow = true;
+      scene.add(tableSurfaceMesh);
+
+      // Wooden Table Body
+      const tableBodyGeo = new THREE.CylinderGeometry(tableRadius, tableRadius * 0.96, tableHeight, 64);
+      const tableBodyMat = new THREE.MeshStandardMaterial({
+        color: 0x3d251a,
+        roughness: 0.6
+      });
+      const tableBody = new THREE.Mesh(tableBodyGeo, tableBodyMat);
+      tableBody.position.y = -tableHeight / 2;
+      tableBody.receiveShadow = true;
+      scene.add(tableBody);
+
+      // Warm Brass Rim
+      const rimGeo = new THREE.TorusGeometry(tableRadius, 0.18, 16, 100);
+      const rimMat = new THREE.MeshStandardMaterial({
+        color: 0xd7a15c,
+        metalness: 0.6,
+        roughness: 0.3
+      });
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = 0;
+      scene.add(rim);
+
+      // Subtle Sacred Inner Circle Marker
+      const innerRingGeo = new THREE.RingGeometry(6, 6.06, 64);
+      const innerRingMat = new THREE.MeshBasicMaterial({ color: 0xe2cbaf, opacity: 0.22, transparent: true, side: THREE.DoubleSide });
+      const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+      innerRing.rotation.x = -Math.PI / 2;
+      innerRing.position.y = 0.01;
+      scene.add(innerRing);
+
+      // Raycaster
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+
+      // Event Listeners
+      window.addEventListener('resize', onWindowResize);
+      renderer.domElement.addEventListener('pointerdown', onPointerDown);
+      renderer.domElement.addEventListener('pointermove', onPointerMove);
+      renderer.domElement.addEventListener('pointerup', onPointerUp);
+
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      
+      figuresMap.forEach((group) => {
+        const labelSprite = group.getObjectByName("labelSprite");
+        if (labelSprite) {
+          labelSprite.quaternion.copy(camera.quaternion);
+        }
+      });
+
+      updateConnectionLines();
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('threeCanvas');
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    // -------------------------------------------------------------
+    // FIGURE MESH GENERATION (TACTILE & ORGANIC)
+    // -------------------------------------------------------------
+    function createFigureMesh(figData) {
+      const group = new THREE.Group();
+      group.userData = { id: figData.id };
+
+      let geom;
+      const color = new THREE.Color(figData.color || '#e07a5f');
+      const mat = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.3,
+        metalness: 0.1
+      });
+
+      // Smooth Rounded Base Pedestal
+      const basePedestalGeo = new THREE.CylinderGeometry(0.55, 0.6, 0.15, 24);
+      const basePedestalMat = new THREE.MeshStandardMaterial({ color: 0x2c1e18, roughness: 0.5 });
+      const basePedestal = new THREE.Mesh(basePedestalGeo, basePedestalMat);
+      basePedestal.position.y = 0.075;
+      basePedestal.castShadow = true;
+      group.add(basePedestal);
+
+      // Shape Geometry based on Type
+      switch (figData.type) {
+        case 'female':
+          geom = new THREE.ConeGeometry(0.5, 2.1, 24);
+          break;
+        case 'child':
+          geom = new THREE.CylinderGeometry(0.3, 0.38, 1.2, 24);
+          break;
+        case 'abstract':
+          geom = new THREE.DodecahedronGeometry(0.6, 1);
+          break;
+        case 'resource':
+          geom = new THREE.OctahedronGeometry(0.7, 0);
+          break;
+        case 'male':
+        default:
+          geom = new THREE.CylinderGeometry(0.42, 0.45, 2.2, 24);
+          break;
+      }
+
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      
+      if (figData.type === 'female') {
+        mesh.position.y = 1.15;
+      } else if (figData.type === 'child') {
+        mesh.position.y = 0.72;
+      } else if (figData.type === 'abstract' || figData.type === 'resource') {
+        mesh.position.y = 0.85;
+      } else {
+        mesh.position.y = 1.2;
+      }
+      group.add(mesh);
+
+      // Gentle Directional Pointer (Gaze Marker)
+      const pointerGeo = new THREE.ConeGeometry(0.12, 0.35, 12);
+      const pointerMat = new THREE.MeshBasicMaterial({ color: 0xfff8ee });
+      const pointer = new THREE.Mesh(pointerGeo, pointerMat);
+      pointer.rotation.x = Math.PI / 2;
+      pointer.position.set(0, mesh.position.y + 0.3, 0.55);
+      group.add(pointer);
+
+      // Label Sprite
+      const sprite = createTextSprite(figData.label || 'Representante');
+      sprite.name = "labelSprite";
+      sprite.position.set(0, mesh.position.y + 1.4, 0);
+      group.add(sprite);
+
+      group.position.set(figData.x || 0, 0, figData.z || 0);
+      group.rotation.y = (figData.rotation || 0) * (Math.PI / 180);
+
+      return group;
+    }
+
+    function createTextSprite(text) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = 'rgba(44, 30, 24, 0.88)';
+      ctx.strokeStyle = 'rgba(215, 196, 168, 0.4)';
+      ctx.lineWidth = 3;
+      
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 240, 48, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = '500 18px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = '#faf8f5';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 128, 32);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(2.4, 0.6, 1);
+      return sprite;
+    }
+
+    // -------------------------------------------------------------
+    // INTERACTION & DRAG-AND-DROP LOGIC
+    // -------------------------------------------------------------
+    let isDragging = false;
+    let draggedObjectId = null;
+
+    function onPointerDown(event) {
+      if (event.button !== 0) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / containerWidth()) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / containerHeight()) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      
+      const interactiveMeshes = [];
+      figuresMap.forEach((group) => {
+        group.traverse((child) => {
+          if (child.isMesh) interactiveMeshes.push(child);
+        });
+      });
+
+      const intersects = raycaster.intersectObjects(interactiveMeshes);
+
+      if (intersects.length > 0) {
+        let current = intersects[0].object;
+        while (current.parent && !current.userData.id) {
+          current = current.parent;
+        }
+
+        const figId = current.userData?.id;
+        if (figId) {
+          if (state.isConnectingMode) {
+            handleConnectionClick(figId);
+            return;
+          }
+
+          isDragging = true;
+          draggedObjectId = figId;
+          controls.enabled = false;
+          selectFigure(figId);
+        }
+      } else {
+        if (!state.isConnectingMode) {
+          selectFigure(null);
+        }
+      }
+    }
+
+    function onPointerMove(event) {
+      if (!isDragging || !draggedObjectId) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / containerWidth()) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / containerHeight()) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(tableSurfaceMesh);
+
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        
+        const maxDist = 13.2;
+        const dist = Math.sqrt(point.x * point.x + point.z * point.z);
+        if (dist > maxDist) {
+          point.x = (point.x / dist) * maxDist;
+          point.z = (point.z / dist) * maxDist;
+        }
+
+        const group = figuresMap.get(draggedObjectId);
+        if (group) {
+          group.position.x = point.x;
+          group.position.z = point.z;
+        }
+
+        const fig = state.figures.find(f => f.id === draggedObjectId);
+        if (fig) {
+          fig.x = point.x;
+          fig.z = point.z;
+        }
+      }
+    }
+
+    function onPointerUp() {
+      if (isDragging) {
+        isDragging = false;
+        controls.enabled = true;
+        draggedObjectId = null;
+        syncStateToCloud();
+      }
+    }
+
+    function containerWidth() {
+      return document.getElementById('threeCanvas').clientWidth;
+    }
+    function containerHeight() {
+      return document.getElementById('threeCanvas').clientHeight;
+    }
+
+    // -------------------------------------------------------------
+    // CONNECTION LINES
+    // -------------------------------------------------------------
+    function updateConnectionLines() {
+      state.connections.forEach(conn => {
+        const figA = figuresMap.get(conn.fromId);
+        const figB = figuresMap.get(conn.toId);
+
+        if (figA && figB) {
+          let line = linesMap.get(conn.id);
+          const points = [
+            new THREE.Vector3(figA.position.x, 0.25, figA.position.z),
+            new THREE.Vector3(figB.position.x, 0.25, figB.position.z)
+          ];
+
+          if (!line) {
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineDashedMaterial({
+              color: 0xd7a15c,
+              dashSize: 0.4,
+              gapSize: 0.2,
+              linewidth: 2
+            });
+            line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            scene.add(line);
+            linesMap.set(conn.id, line);
+          } else {
+            line.geometry.setFromPoints(points);
+            line.geometry.attributes.position.needsUpdate = true;
+            line.computeLineDistances();
+          }
+        }
+      });
+    }
+
+    function removeUnusedLines() {
+      const activeIds = new Set(state.connections.map(c => c.id));
+      linesMap.forEach((line, connId) => {
+        if (!activeIds.has(connId)) {
+          scene.remove(line);
+          linesMap.delete(connId);
+        }
+      });
+    }
+
+    function handleConnectionClick(figId) {
+      if (!state.connectionSourceId) {
+        state.connectionSourceId = figId;
+        showToast("Selecciona el segundo representante para trazar el lazo.", "info");
+      } else {
+        if (state.connectionSourceId !== figId) {
+          const newConn = {
+            id: 'conn_' + Date.now(),
+            fromId: state.connectionSourceId,
+            toId: figId
+          };
+          state.connections.push(newConn);
+          syncStateToCloud();
+          showToast("Lazo trazado amorosamente.", "success");
+        }
+        state.isConnectingMode = false;
+        state.connectionSourceId = null;
+        document.getElementById('btnStartConnection').classList.remove('bg-terracotta-500', 'text-white');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // STATE RECONCILIATION
+    // -------------------------------------------------------------
+    function renderSceneFromState() {
+      const stateFigIds = new Set(state.figures.map(f => f.id));
+      figuresMap.forEach((group, id) => {
+        if (!stateFigIds.has(id)) {
+          scene.remove(group);
+          figuresMap.delete(id);
+        }
+      });
+
+      state.figures.forEach(fig => {
+        let group = figuresMap.get(fig.id);
+        if (!group) {
+          group = createFigureMesh(fig);
+          scene.add(group);
+          figuresMap.set(fig.id, group);
+        } else {
+          group.position.x = fig.x;
+          group.position.z = fig.z;
+          group.rotation.y = (fig.rotation || 0) * (Math.PI / 180);
+        }
+      });
+
+      removeUnusedLines();
+      updateConnectionLines();
+
+      updateFiguresUIList();
+      document.getElementById('figureCount').innerText = state.figures.length;
+    }
+
+    // -------------------------------------------------------------
+    // MULTIPLAYER ROOM SYNC
+    // -------------------------------------------------------------
+    let roomUnsubscribe = null;
+
+    async function createRoom() {
+      if (!db) {
+        showToast("Modo individual activo. Conecta Firebase para salas compartidas.", "info");
+        return;
+      }
+      const newRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      state.roomId = newRoomCode;
+      state.isHost = true;
+
+      document.getElementById('roomIdInput').value = newRoomCode;
+      
+      await syncStateToCloud();
+      listenToRoom(newRoomCode);
+
+      updateStatusBadge(true, `Sala: ${newRoomCode}`);
+      showToast(`¡Enlace creado! Código: ${newRoomCode}. Compártelo para conectar.`, "success");
+    }
+
+    async function joinRoom(roomCode) {
+      if (!db || !roomCode) return;
+      state.roomId = roomCode.toUpperCase();
+      state.isHost = false;
+
+      listenToRoom(state.roomId);
+    }
+
+    function listenToRoom(roomCode) {
+      if (roomUnsubscribe) roomUnsubscribe();
+
+      const docRef = doc(db, 'artifacts', state.appId, 'public', 'data', 'rooms', roomCode);
+      roomUnsubscribe = onSnapshot(docRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const roomData = snapshot.data();
+          if (roomData.figures) state.figures = roomData.figures;
+          if (roomData.connections) state.connections = roomData.connections;
+
+          renderSceneFromState();
+          updateStatusBadge(true, `Conectado: ${roomCode}`);
+        } else {
+          showToast("La sala especificada no se encuentra activa.", "error");
+          updateStatusBadge(false, "Desconectado");
+        }
+      }, (err) => {
+        console.error("Error escuchando sala:", err);
+      });
+    }
+
+    async function syncStateToCloud() {
+      if (!db || !state.roomId) return;
+      try {
+        const docRef = doc(db, 'artifacts', state.appId, 'public', 'data', 'rooms', state.roomId);
+        await setDoc(docRef, {
+          figures: state.figures,
+          connections: state.connections,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Error al guardar estado:", e);
+      }
+    }
+
+    function updateStatusBadge(connected, text) {
+      const dot = document.getElementById('statusDot');
+      const label = document.getElementById('statusText');
+      if (connected) {
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+        label.innerText = text;
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-amber-400";
+        label.innerText = text || "Sesión Privada";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // AI SYSTEMIC ASSISTANT
+    // -------------------------------------------------------------
+    async function analyzeSystemicField() {
+      const outputEl = document.getElementById('aiAnalysisOutput');
+      const statusTag = document.getElementById('aiStatusTag');
+
+      if (state.figures.length === 0) {
+        outputEl.innerHTML = `<p class="text-amber-300">El espacio está despejado. Integra representantes al campo para sintetizar la dinámica sistémica.</p>`;
+        return;
+      }
+
+      statusTag.innerText = "Sintetizando...";
+      statusTag.className = "text-[10px] px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-200 border border-amber-700 animate-pulse";
+
+      const spatialData = state.figures.map(f => {
+        const rad = (f.rotation || 0) * (Math.PI / 180);
+        return {
+          rol: f.label,
+          tipo: f.type,
+          posicion_X: f.x.toFixed(2),
+          posicion_Z: f.z.toFixed(2),
+          mirada_vector: { dx: Math.sin(rad).toFixed(2), dz: Math.cos(rad).toFixed(2) },
+          orientacion_grados: f.rotation || 0,
+          sensacion_sistemica: f.state || 'neutral'
+        };
+      });
+
+      const userQuery = `Analiza amorosa y terapéuticamente la siguiente configuración de Constelación Familiar 3D con ${state.figures.length} elementos:\n${JSON.stringify(spatialData, null, 2)}.\n` +
+        `Lazos explícitos: ${JSON.stringify(state.connections)}.`;
+
+      const systemPrompt = `Eres un facilitador y terapeuta compasivo de Constelaciones Familiares, profundamente versado en la fenomenología sistémica y las enseñanzas de Bert Hellinger. ` +
+        `Instrucciones de respuesta:\n` +
+        `1. Muestra cercanía, respeto y humanidad en tu lenguaje.\n` +
+        `2. Analiza las cercanías, aislamientos y adónde se dirigen las miradas del campo.\n` +
+        `3. Reflexiona sobre las Órdenes del Amor (Pertenencia, Jerarquía, Equilibrio).\n` +
+        `4. Ofrece 2-3 comprensiones profundas y 2 frases sanadoras e integradoras para liberar el movimiento.\n` +
+        `Responde estructurado con HTML amable (usa <p>, <ul>, <li>, <strong>).`;
+
+      try {
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userQuery }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] }
+          })
+        });
+
+        const result = await response.json();
+        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (aiText) {
+          outputEl.innerHTML = aiText;
+          statusTag.innerText = "Comprensión Lista";
+          statusTag.className = "text-[10px] px-2.5 py-0.5 rounded-full bg-sage-700 text-amber-100 border border-sage-500";
+        } else {
+          outputEl.innerHTML = `<p class="text-rose-300">No se pudo sintetizar el movimiento en este momento.</p>`;
+        }
+      } catch (err) {
+        console.error("Error de la IA:", err);
+        outputEl.innerHTML = `<p class="text-rose-300">Error al consultar el Asistente Sistémico.</p>`;
+        statusTag.innerText = "Reintentar";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // UI HELPERS
+    // -------------------------------------------------------------
+    function updateFiguresUIList() {
+      const container = document.getElementById('figuresList');
+      container.innerHTML = '';
+
+      state.figures.forEach(fig => {
+        const item = document.createElement('div');
+        const isSelected = state.selectedFigureId === fig.id;
+
+        item.className = `p-3 rounded-xl border flex items-center justify-between transition cursor-pointer ${
+          isSelected 
+            ? 'bg-warm-900/90 border-amber-400/60 text-amber-100 shadow-md' 
+            : 'bg-warm-900/40 border-warm-700/40 hover:bg-warm-900/70 text-warm-200'
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <span class="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style="background-color: ${fig.color}"></span>
+            <div>
+              <p class="font-medium text-xs leading-tight text-amber-100">${fig.label}</p>
+              <p class="text-[10px] text-warm-300/70 capitalize">${fig.type} • (${fig.x.toFixed(1)}, ${fig.z.toFixed(1)})</p>
+            </div>
+          </div>
+          <button class="text-warm-400 hover:text-rose-300 p-1 transition" onclick="event.stopPropagation(); deleteFigure('${fig.id}')">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+
+        item.onclick = () => selectFigure(fig.id);
+        container.appendChild(item);
+      });
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function selectFigure(id) {
+      state.selectedFigureId = id;
+      const inspector = document.getElementById('inspectorPanel');
+
+      if (id) {
+        const fig = state.figures.find(f => f.id === id);
+        if (fig) {
+          inspector.classList.remove('hidden');
+          document.getElementById('inspectLabel').innerText = fig.label;
+          document.getElementById('inspectColorDot').style.backgroundColor = fig.color;
+          document.getElementById('inspectRotation').value = fig.rotation || 0;
+          document.getElementById('inspectRotVal').innerText = `${fig.rotation || 0}º`;
+          document.getElementById('inspectState').value = fig.state || 'neutral';
+        }
+      } else {
+        inspector.classList.add('hidden');
+      }
+
+      updateFiguresUIList();
+    }
+
+    function addFigure() {
+      const labelInput = document.getElementById('newFigLabel');
+      const typeInput = document.getElementById('newFigType');
+      const colorInput = document.getElementById('newFigColor');
+
+      const label = labelInput.value.trim() || 'Representante';
+      const type = typeInput.value;
+      const color = colorInput.value;
+
+      const newFig = {
+        id: 'fig_' + Date.now(),
+        label,
+        type,
+        color,
+        x: (Math.random() - 0.5) * 5,
+        z: (Math.random() - 0.5) * 5,
+        rotation: 0,
+        state: 'neutral'
+      };
+
+      state.figures.push(newFig);
+      labelInput.value = '';
+
+      renderSceneFromState();
+      syncStateToCloud();
+      selectFigure(newFig.id);
+      showToast(`Añadido ${label} con gratitud.`, "success");
+    }
+
+    window.deleteFigure = function(id) {
+      state.figures = state.figures.filter(f => f.id !== id);
+      state.connections = state.connections.filter(c => c.fromId !== id && c.toId !== id);
+
+      if (state.selectedFigureId === id) selectFigure(null);
+
+      renderSceneFromState();
+      syncStateToCloud();
+      showToast("Elemento retirado con respeto.", "info");
+    };
+
+    window.copyPhrase = function(text) {
+      navigator.clipboard.writeText(text);
+      showToast("Frase copiada para compartir.", "success");
+    };
+
+    function showToast(msg, type = "info") {
+      const toastContainer = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      let badgeColor = "bg-amber-400";
+      if (type === "success") badgeColor = "bg-emerald-400";
+      if (type === "error") badgeColor = "bg-rose-400";
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl glass-warm border border-warm-700/50 text-amber-100 text-xs shadow-2xl transition transform translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
+        <span>${msg}</span>
+      `;
+
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Event Bindings
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initFirebase();
+      initThreeJS();
+
+      document.getElementById('newFigColor').addEventListener('input', (e) => {
+        document.getElementById('colorValHex').innerText = e.target.value.toUpperCase();
+      });
+
+      document.getElementById('btnAddFigure').addEventListener('click', addFigure);
+
+      document.getElementById('btnCloseInspector').addEventListener('click', () => selectFigure(null));
+      document.getElementById('btnDeleteSelected').addEventListener('click', () => {
+        if (state.selectedFigureId) deleteFigure(state.selectedFigureId);
+      });
+
+      document.getElementById('inspectRotation').addEventListener('input', (e) => {
+        if (state.selectedFigureId) {
+          const fig = state.figures.find(f => f.id === state.selectedFigureId);
+          if (fig) {
+            fig.rotation = parseInt(e.target.value);
+            document.getElementById('inspectRotVal').innerText = `${fig.rotation}º`;
+            const group = figuresMap.get(fig.id);
+            if (group) group.rotation.y = fig.rotation * (Math.PI / 180);
+            syncStateToCloud();
+          }
+        }
+      });
+
+      document.getElementById('inspectState').addEventListener('change', (e) => {
+        if (state.selectedFigureId) {
+          const fig = state.figures.find(f => f.id === state.selectedFigureId);
+          if (fig) {
+            fig.state = e.target.value;
+            syncStateToCloud();
+          }
+        }
+      });
+
+      document.getElementById('btnStartConnection').addEventListener('click', () => {
+        state.isConnectingMode = !state.isConnectingMode;
+        state.connectionSourceId = null;
+        const btn = document.getElementById('btnStartConnection');
+
+        if (state.isConnectingMode) {
+          btn.classList.add('bg-terracotta-500', 'text-white');
+          showToast("Selecciona el primer representante.", "info");
+        } else {
+          btn.classList.remove('bg-terracotta-500', 'text-white');
+        }
+      });
+
+      document.getElementById('btnClearConnections').addEventListener('click', () => {
+        state.connections = [];
+        renderSceneFromState();
+        syncStateToCloud();
+        showToast("Lazos liberados.", "info");
+      });
+
+      document.getElementById('btnCreateRoom').addEventListener('click', createRoom);
+      document.getElementById('btnJoinRoom').addEventListener('click', () => {
+        const code = document.getElementById('roomIdInput').value;
+        if (code) joinRoom(code);
+      });
+
+      document.getElementById('btnAnalyzeField').addEventListener('click', analyzeSystemicField);
+
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
