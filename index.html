@@ -392,28 +392,23 @@
       connectionSourceId: null
     };
 
-    // Firebase Initialization
-    let db, auth;
-    async function initFirebase() {
-      try {
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        if (firebaseConfig) {
-          const app = initializeApp(firebaseConfig);
-          auth = getAuth(app);
-          db = getFirestore(app);
-          state.db = db;
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } else {
-            await signInAnonymously(auth);
-          }
-          state.user = auth.currentUser;
-        }
-      } catch (err) {
-        console.warn("Firebase no disponible. Operando en modo local offline:", err);
-      }
-    }
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAP8f8_XIDwprNnJRuKX24AJjvy26CW9Bs",
+  authDomain: "lainez-3d.firebaseapp.com",
+  projectId: "lainez-3d",
+  storageBucket: "lainez-3d.firebasestorage.app",
+  messagingSenderId: "60308784880",
+  appId: "1:60308784880:web:8ac971ae4bf9ff105fa435"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
     // -------------------------------------------------------------
     // THREE.JS CANVAS & SCENE SETUP WITH BRIGHTER LIGHTING
