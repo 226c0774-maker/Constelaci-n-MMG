@@ -155,6 +155,13 @@
     .btn-danger:hover {
       background: #5f0f40;
     }
+    .btn-warning {
+      background: #d4a373;
+      color: #1a1614;
+    }
+    .btn-warning:hover {
+      background: #e6ccb2;
+    }
     .btn-group {
       display: flex;
       gap: 6px;
@@ -251,6 +258,12 @@
     <div id="room-info">
       <span id="room-status-text">Estado: Modo local activo</span>
     </div>
+
+    <!-- Control Maestro del Creador -->
+    <div id="host-controls" style="display: none; margin-top: 10px; border-top: 1px dashed rgba(212,163,115,0.3); padding-top: 8px;">
+      <label style="font-size: 0.7rem; color: #e9c46a;">CONTROL MAESTRO ANFITRIÓN:</label>
+      <button id="btn-toggle-remote-focus" class="btn-warning">🔒 Bloquear Pantalla Consultante</button>
+    </div>
   </div>
 
   <!-- Panel Creación -->
@@ -338,7 +351,7 @@
     </div>
   </div>
 
-  <!-- Panel Notas -->
+  <!-- Panel Notas Privado de Anfitrión -->
   <div id="notes-panel" class="panel">
     <h2>Notas Confidenciales de Sesión</h2>
     <textarea id="session-notes" placeholder="Apunta observaciones sistémicas, frases sanadoras o hipótesis de trabajo..."></textarea>
@@ -363,10 +376,12 @@
     const auth = getAuth(app);
 
     let currentRoomId = null;
+    let isHost = false;
     let isRemoteUpdate = false;
     let selectedAvatarId = null;
     let lookAtMode = false;
     let linkMode = false;
+    let isRemoteFocusActive = false;
 
     // AUDIO WEBRTC
     let localStream = null;
@@ -406,12 +421,41 @@
           console.error("Error copiando código:", err);
         });
       });
+
+      if (isHost) {
+        document.getElementById('host-controls').style.display = 'block';
+      } else {
+        document.getElementById('host-controls').style.display = 'none';
+        document.getElementById('btn-notes-toggle').style.display = 'none';
+      }
     }
 
     function getSelectedAvatar() {
       if (!selectedAvatarId) return null;
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
+
+    // CONTROL REMOTO FOCUS (ANFITRIÓN)
+    document.getElementById('btn-toggle-remote-focus').addEventListener('click', async () => {
+      if (!isHost || !currentRoomId) return;
+
+      isRemoteFocusActive = !isRemoteFocusActive;
+      const roomRef = doc(db, "rooms", currentRoomId);
+      await setDoc(roomRef, { remoteFocus: isRemoteFocusActive }, { merge: true });
+
+      const btn = document.getElementById('btn-toggle-remote-focus');
+      if (isRemoteFocusActive) {
+        btn.innerText = "🔓 Desbloquear Pantalla Consultante";
+        btn.classList.remove('btn-warning');
+        btn.classList.add('btn-secondary');
+        showNotif("Pantalla del consultante bloqueada en Focus");
+      } else {
+        btn.innerText = "🔒 Bloquear Pantalla Consultante";
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-warning');
+        showNotif("Controles devueltos al consultante");
+      }
+    });
 
     // AUDIO CONTROL
     async function toggleAudioConnection() {
@@ -1003,12 +1047,14 @@
         await setDoc(roomRef, {
           createdBy: userName,
           createdAt: new Date(),
+          remoteFocus: false,
           avatars: []
         });
         
+        isHost = true;
         currentRoomId = roomId;
         updateRoomInfoUI(roomId);
-        showNotif(`Sala ${roomId} Creada`);
+        showNotif(`Sala ${roomId} Creada (Modo Anfitrión)`);
         listenToRoom(roomId);
       } catch (e) {
         console.error("Error al crear sala:", e);
@@ -1020,16 +1066,25 @@
       const roomId = document.getElementById('room-code-input').value.trim().toUpperCase();
       if (!roomId) return alert("Código inválido.");
       
+      isHost = false;
       currentRoomId = roomId;
       updateRoomInfoUI(roomId);
       listenToRoom(roomId);
-      showNotif(`Unido a ${roomId}`);
+      showNotif(`Unido a ${roomId} (Modo Consultante)`);
     });
 
     function listenToRoom(roomId) {
       onSnapshot(doc(db, "rooms", roomId), (docSnapshot) => {
         if (!docSnapshot.exists()) return;
         const data = docSnapshot.data();
+
+        // APLICAR FOCUS REMOTO AL CONSULTANTE
+        if (!isHost && typeof data.remoteFocus === 'boolean') {
+          const isRemoteLocked = data.remoteFocus;
+          document.querySelectorAll('.panel').forEach(p => p.style.opacity = isRemoteLocked ? '0' : '1');
+          document.getElementById('view-toggle-btn').innerText = isRemoteLocked ? '🔒 Guiado por Terapeuta' : '👁️ Focus';
+          if (isRemoteLocked) deselectAvatar();
+        }
 
         isRemoteUpdate = true;
         const currentSavedId = selectedAvatarId;
