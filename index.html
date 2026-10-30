@@ -62,27 +62,30 @@
       width: 300px;
       display: none;
     }
-    /* Botón Vista Limpia Estilizado y Compacto */
+    /* Botón Focus Súper Ajustado */
     #view-toggle-btn {
       position: absolute;
-      top: 16px;
+      top: 14px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      background: rgba(28, 24, 22, 0.85);
+      display: inline-block;
+      width: auto;
+      background: rgba(28, 24, 22, 0.88);
       border: 1px solid rgba(212, 163, 115, 0.4);
       color: #e6ccb2;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 0.8rem;
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       backdrop-filter: blur(8px);
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
     #view-toggle-btn:hover {
-      background: rgba(212, 163, 115, 0.2);
+      background: rgba(212, 163, 115, 0.25);
       color: #fff;
     }
     h2, h3 {
@@ -158,15 +161,15 @@
     }
     #notification {
       position: absolute;
-      top: 60px;
+      top: 55px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
-      padding: 8px 18px;
-      border-radius: 16px;
+      padding: 6px 16px;
+      border-radius: 14px;
       background: #b08968;
       color: white;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 500;
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
       display: none;
@@ -353,7 +356,6 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // Iluminación Profesional de Juego
     const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.85);
     scene.add(ambientLight);
 
@@ -364,7 +366,6 @@
     dirLight.shadow.mapSize.height = 2048;
     scene.add(dirLight);
 
-    // Tablero Madera Cálida
     const boardGeo = new THREE.CylinderGeometry(9, 9, 0.4, 64);
     const boardMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.5 });
     const board = new THREE.Mesh(boardGeo, boardMat);
@@ -395,7 +396,7 @@
       exclusion: 0x212529
     };
 
-    // --- GENERADOR DE MODELO HUMANO ARTICULADO (LOW-POLY AVATAR) ---
+    // --- CONSTRUCTOR CON FACCIONES HUMANAS (OJOS Y BOCA) ---
     function buildHumanMesh(type = 'adult-m') {
       const group = new THREE.Group();
       const bodyGroup = new THREE.Group();
@@ -428,13 +429,39 @@
         mesh.castShadow = true;
         bodyGroup.add(mesh);
       } else {
-        // === ANATOMÍA HUMANA ESTILIZADA ===
+        // === ANATOMÍA HUMANA CON ROSTRO ===
         // Cabeza
-        const headGeo = new THREE.SphereGeometry(0.26 * scaleXZ, 16, 16);
+        const headGeo = new THREE.SphereGeometry(0.27 * scaleXZ, 24, 24);
         const head = new THREE.Mesh(headGeo, mat);
         head.position.y = (1.65 * scaleY);
         head.castShadow = true;
         bodyGroup.add(head);
+
+        // Ojos
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2b211b });
+        const eyeGeo = new THREE.SphereGeometry(0.035 * scaleXZ, 12, 12);
+        
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.095 * scaleXZ, head.position.y + 0.04 * scaleY, 0.23 * scaleXZ);
+        bodyGroup.add(eyeL);
+
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(0.095 * scaleXZ, head.position.y + 0.04 * scaleY, 0.23 * scaleXZ);
+        bodyGroup.add(eyeR);
+
+        // Boca
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x5a3d31 });
+        const mouthGeo = new THREE.BoxGeometry(0.08 * scaleXZ, 0.02 * scaleY, 0.02 * scaleXZ);
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, head.position.y - 0.08 * scaleY, 0.25 * scaleXZ);
+        bodyGroup.add(mouth);
+
+        // Nariz
+        const noseGeo = new THREE.ConeGeometry(0.04 * scaleXZ, 0.12 * scaleY, 12);
+        noseGeo.rotateX(Math.PI / 2);
+        const nose = new THREE.Mesh(noseGeo, mat);
+        nose.position.set(0, head.position.y - 0.01 * scaleY, 0.27 * scaleXZ);
+        bodyGroup.add(nose);
 
         // Cuello
         const neckGeo = new THREE.CylinderGeometry(0.09 * scaleXZ, 0.1 * scaleXZ, 0.12 * scaleY, 12);
@@ -442,7 +469,7 @@
         neck.position.y = (1.48 * scaleY);
         bodyGroup.add(neck);
 
-        // Pecho / Torso
+        // Torso
         const torsoTopWidth = isFemale ? 0.30 : 0.38;
         const torsoBotWidth = isFemale ? 0.22 : 0.26;
         const torsoGeo = new THREE.CylinderGeometry(torsoTopWidth * scaleXZ, torsoBotWidth * scaleXZ, 0.55 * scaleY, 16);
@@ -451,27 +478,26 @@
         torso.castShadow = true;
         bodyGroup.add(torso);
 
-        // Pelvis / Cadera
+        // Cadera
         const hipGeo = new THREE.CylinderGeometry(torsoBotWidth * scaleXZ, (isFemale ? 0.28 : 0.24) * scaleXZ, 0.3 * scaleY, 16);
         const hip = new THREE.Mesh(hipGeo, mat);
         hip.position.y = (0.78 * scaleY);
         hip.castShadow = true;
         bodyGroup.add(hip);
 
-        // Pierna Izquierda
+        // Piernas
         const legGeo = new THREE.CylinderGeometry(0.08 * scaleXZ, 0.06 * scaleXZ, 0.65 * scaleY, 12);
         const legL = new THREE.Mesh(legGeo, mat);
         legL.position.set(-0.11 * scaleXZ, 0.325 * scaleY, 0);
         legL.castShadow = true;
         bodyGroup.add(legL);
 
-        // Pierna Derecha
         const legR = new THREE.Mesh(legGeo, mat);
         legR.position.set(0.11 * scaleXZ, 0.325 * scaleY, 0);
         legR.castShadow = true;
         bodyGroup.add(legR);
 
-        // Brazo Izquierdo
+        // Brazos
         const armGeo = new THREE.CylinderGeometry(0.065 * scaleXZ, 0.05 * scaleXZ, 0.55 * scaleY, 12);
         const armL = new THREE.Mesh(armGeo, mat);
         armL.position.set((-torsoTopWidth - 0.05) * scaleXZ, 1.1 * scaleY, 0);
@@ -479,23 +505,14 @@
         armL.castShadow = true;
         bodyGroup.add(armL);
 
-        // Brazo Derecho
         const armR = new THREE.Mesh(armGeo, mat);
         armR.position.set((torsoTopWidth + 0.05) * scaleXZ, 1.1 * scaleY, 0);
         armR.rotation.z = -0.15;
         armR.castShadow = true;
         bodyGroup.add(armR);
-
-        // Visor / Indicador de Mirada (Nariz estilizada)
-        const gazeGeo = new THREE.ConeGeometry(0.06 * scaleXZ, 0.2, 12);
-        gazeGeo.rotateX(Math.PI / 2);
-        const gazeMat = new THREE.MeshStandardMaterial({ color: 0x4a3225 });
-        const gaze = new THREE.Mesh(gazeGeo, gazeMat);
-        gaze.position.set(0, head.position.y, 0.28 * scaleXZ);
-        bodyGroup.add(gaze);
       }
 
-      // Anillo Aura
+      // Aura
       const auraGeo = new THREE.RingGeometry(0.55 * scaleXZ, 0.75 * scaleXZ, 32);
       auraGeo.rotateX(-Math.PI / 2);
       const auraMat = new THREE.MeshBasicMaterial({ color: EMOTION_COLORS.neutral, side: THREE.DoubleSide });
@@ -503,16 +520,12 @@
       aura.position.y = 0.02;
       group.add(aura);
 
-      // --- ETIQUETA ULTRA-LEGIBLE HD (BILLBOARD CANVAS 1024x256) ---
+      // Sprite Billboard para Etiqueta
       const canvas = document.createElement('canvas');
-      canvas.width = 1024; 
-      canvas.height = 256;
       const texture = new THREE.CanvasTexture(canvas);
-      
       const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.y = 2.45 * scaleY;
-      sprite.scale.set(3.2, 0.8, 1);
+      sprite.position.y = 2.4 * scaleY;
       group.add(sprite);
 
       group.userData = {
@@ -521,6 +534,7 @@
         auraMesh: aura,
         labelCanvas: canvas,
         labelTexture: texture,
+        labelSprite: sprite,
         type,
         scaleY
       };
@@ -528,30 +542,45 @@
       return group;
     }
 
-    // Renderizado HD de Etiquetas
+    // --- ETIQUETA DINÁMICA AJUSTADA AL TAMAÑO DEL TEXTO ---
     function updateLabel(avatarGroup, text) {
       const canvas = avatarGroup.userData.labelCanvas;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, 1024, 256);
+      const displayText = text || "Persona";
 
-      // Fondo semitransparente con marco
-      ctx.fillStyle = "rgba(18, 14, 12, 0.92)";
-      ctx.strokeStyle = "rgba(212, 163, 115, 0.8)";
-      ctx.lineWidth = 8;
+      ctx.font = "Bold 52px 'Segoe UI', sans-serif";
+      const textWidth = ctx.measureText(displayText).width;
+
+      const paddingX = 60;
+      const canvasWidth = Math.max(textWidth + paddingX * 2, 220);
+      const canvasHeight = 120;
+
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+
+      // Re-aplicar estilos en canvas redimensionado
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      ctx.fillStyle = "rgba(18, 14, 12, 0.90)";
+      ctx.strokeStyle = "rgba(212, 163, 115, 0.85)";
+      ctx.lineWidth = 6;
       
       ctx.beginPath();
-      ctx.roundRect(32, 32, 960, 192, 36);
+      ctx.roundRect(12, 12, canvasWidth - 24, canvasHeight - 24, 24);
       ctx.fill();
       ctx.stroke();
 
-      // Fuente Ultra Claras
-      ctx.font = "Bold 64px 'Segoe UI', sans-serif";
+      ctx.font = "Bold 52px 'Segoe UI', sans-serif";
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(text || "Persona", 512, 128);
+      ctx.fillText(displayText, canvasWidth / 2, canvasHeight / 2);
 
       avatarGroup.userData.labelTexture.needsUpdate = true;
+
+      // Ajustar escala visual proporcional para evitar superposición
+      const spriteScaleX = (canvasWidth / 120) * 0.7;
+      const spriteScaleY = (canvasHeight / 120) * 0.7;
+      avatarGroup.userData.labelSprite.scale.set(spriteScaleX, spriteScaleY, 1);
     }
 
     function addAvatarToScene(data) {
