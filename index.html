@@ -164,11 +164,31 @@
     }
     #room-info {
       margin-top: 8px;
-      padding: 6px;
+      padding: 8px;
       background: rgba(230, 204, 178, 0.08);
       border-radius: 6px;
       font-size: 0.78rem;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-copy {
+      background: #7f5539;
+      color: #f5efe6;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-top: 2px;
+      width: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-copy:hover {
+      background: #9c6644;
     }
     #notification {
       position: absolute;
@@ -228,7 +248,9 @@
     </div>
     <button id="btn-join-room">Unirse a Sala</button>
 
-    <div id="room-info">Estado: Modo local activo</div>
+    <div id="room-info">
+      <span id="room-status-text">Estado: Modo local activo</span>
+    </div>
   </div>
 
   <!-- Panel Creación -->
@@ -342,7 +364,7 @@
 
     let currentRoomId = null;
     let isRemoteUpdate = false;
-    let selectedAvatarId = null; // Guardamos el ID único en lugar del objeto directo
+    let selectedAvatarId = null;
     let lookAtMode = false;
     let linkMode = false;
 
@@ -370,7 +392,22 @@
       setTimeout(() => { notif.style.display = 'none'; }, 2800);
     }
 
-    // OBTENER AVATAR SELECCIONADO ACTUAL
+    function updateRoomInfoUI(roomId) {
+      const roomInfo = document.getElementById('room-info');
+      roomInfo.innerHTML = `
+        <div>Sala Activa: <b id="current-room-code">${roomId}</b></div>
+        <button id="btn-copy-code" class="btn-copy">📋 Copiar Código</button>
+      `;
+
+      document.getElementById('btn-copy-code').addEventListener('click', () => {
+        navigator.clipboard.writeText(roomId).then(() => {
+          showNotif("Código copiado al portapapeles");
+        }).catch(err => {
+          console.error("Error copiando código:", err);
+        });
+      });
+    }
+
     function getSelectedAvatar() {
       if (!selectedAvatarId) return null;
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
@@ -859,7 +896,6 @@
       document.getElementById('inspector-panel').style.display = 'none';
     }
 
-    // INSPECTOR: EVENTOS REFORZADOS
     document.getElementById('insp-label').addEventListener('input', (e) => {
       const active = getSelectedAvatar();
       if (!active) return;
@@ -971,7 +1007,7 @@
         });
         
         currentRoomId = roomId;
-        document.getElementById('room-info').innerHTML = `Sala Activa: <b>${roomId}</b>`;
+        updateRoomInfoUI(roomId);
         showNotif(`Sala ${roomId} Creada`);
         listenToRoom(roomId);
       } catch (e) {
@@ -985,7 +1021,7 @@
       if (!roomId) return alert("Código inválido.");
       
       currentRoomId = roomId;
-      document.getElementById('room-info').innerHTML = `Conectado a: <b>${roomId}</b>`;
+      updateRoomInfoUI(roomId);
       listenToRoom(roomId);
       showNotif(`Unido a ${roomId}`);
     });
@@ -1009,7 +1045,6 @@
           drawLinks();
         }
 
-        // Restaurar selección si la figura sigue existiendo
         if (currentSavedId) {
           const reselected = avatars.find(a => a.userData.id === currentSavedId);
           if (reselected) {
