@@ -62,7 +62,6 @@
       width: 300px;
       display: none;
     }
-    /* Botón Focus y Control de Audio Superior */
     #top-bar {
       position: absolute;
       top: 14px;
@@ -203,7 +202,6 @@
 
   <div id="canvas-container"></div>
   
-  <!-- Barra Superior de Herramientas -->
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
     <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
@@ -211,7 +209,6 @@
 
   <div id="notification">Notificación</div>
 
-  <!-- Audio Element Oculto para recibir la voz remota -->
   <audio id="remote-audio" autoplay></audio>
 
   <!-- Panel Sincronización -->
@@ -345,11 +342,11 @@
 
     let currentRoomId = null;
     let isRemoteUpdate = false;
-    let selectedAvatar = null;
+    let selectedAvatarId = null; // Guardamos el ID único en lugar del objeto directo
     let lookAtMode = false;
     let linkMode = false;
 
-    // --- WEBRTC CONFIGURACIÓN AUDIO EN VIVO ---
+    // AUDIO WEBRTC
     let localStream = null;
     let peerConnection = null;
     let isAudioConnected = false;
@@ -373,7 +370,13 @@
       setTimeout(() => { notif.style.display = 'none'; }, 2800);
     }
 
-    // --- MANEJO DE AUDIO (WEBRTC) ---
+    // OBTENER AVATAR SELECCIONADO ACTUAL
+    function getSelectedAvatar() {
+      if (!selectedAvatarId) return null;
+      return avatars.find(a => a.userData.id === selectedAvatarId) || null;
+    }
+
+    // AUDIO CONTROL
     async function toggleAudioConnection() {
       const audioBtn = document.getElementById('audio-toggle-btn');
       
@@ -391,11 +394,10 @@
 
           setupWebRTCConnection();
         } catch (err) {
-          console.error("Error al acceder al micrófono:", err);
+          console.error("Error micrófono:", err);
           showNotif("Permiso de micrófono denegado");
         }
       } else {
-        // Alternar Mute / Unmute
         isMuted = !isMuted;
         localStream.getAudioTracks()[0].enabled = !isMuted;
         if (isMuted) {
@@ -415,12 +417,10 @@
     async function setupWebRTCConnection() {
       peerConnection = new RTCPeerConnection(rtcServers);
 
-      // Agregar pistas de audio local
       localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, localStream);
       });
 
-      // Recibir stream remoto
       peerConnection.ontrack = event => {
         const remoteAudio = document.getElementById('remote-audio');
         remoteAudio.srcObject = event.streams[0];
@@ -436,16 +436,12 @@
         }
       };
 
-      // Crear oferta SDP
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
 
-      const roomWithOffer = {
-        offer: { type: offer.type, sdp: offer.sdp }
-      };
+      const roomWithOffer = { offer: { type: offer.type, sdp: offer.sdp } };
       await setDoc(roomRef, roomWithOffer, { merge: true });
 
-      // Escuchar respuestas remotas
       onSnapshot(roomRef, async snapshot => {
         const data = snapshot.data();
         if (peerConnection && !peerConnection.currentRemoteDescription && data && data.answer) {
@@ -454,7 +450,6 @@
         }
       });
 
-      // Escuchar candidatos remotos
       onSnapshot(calleeCandidates, snapshot => {
         snapshot.docChanges().forEach(async change => {
           if (change.type === 'added') {
@@ -658,6 +653,7 @@
     }
 
     function updateLabel(avatarGroup, text) {
+      if (!avatarGroup || !avatarGroup.userData.labelCanvas) return;
       const canvas = avatarGroup.userData.labelCanvas;
       const ctx = canvas.getContext('2d');
       const displayText = text || "Persona";
@@ -718,6 +714,7 @@
     }
 
     function applyAvatarState(avatarGroup) {
+      if (!avatarGroup) return;
       const emotionKey = avatarGroup.userData.emotion || 'neutral';
       const colorHex = EMOTION_COLORS[emotionKey] || EMOTION_COLORS.neutral;
 
@@ -780,18 +777,20 @@
         let obj = intersects[0].object;
         while (obj.parent && obj.parent !== scene) obj = obj.parent;
 
-        if (lookAtMode && selectedAvatar && selectedAvatar !== obj) {
-          const dx = obj.position.x - selectedAvatar.position.x;
-          const dz = obj.position.z - selectedAvatar.position.z;
-          selectedAvatar.rotation.y = Math.atan2(dx, dz);
+        const activeSelected = getSelectedAvatar();
+
+        if (lookAtMode && activeSelected && activeSelected !== obj) {
+          const dx = obj.position.x - activeSelected.position.x;
+          const dz = obj.position.z - activeSelected.position.z;
+          activeSelected.rotation.y = Math.atan2(dx, dz);
           lookAtMode = false;
           showNotif("Mirada orientada");
           saveStateToFirebase();
           return;
         }
 
-        if (linkMode && selectedAvatar && selectedAvatar !== obj) {
-          selectedAvatar.userData.linkedTo = obj.userData.id;
+        if (linkMode && activeSelected && activeSelected !== obj) {
+          activeSelected.userData.linkedTo = obj.userData.id;
           linkMode = false;
           drawLinks();
           showNotif("Vínculo creado");
@@ -838,7 +837,8 @@
     });
 
     function selectAvatar(avatarGroup) {
-      selectedAvatar = avatarGroup;
+      if (!avatarGroup) return;
+      selectedAvatarId = avatarGroup.userData.id;
       selectHalo.position.set(avatarGroup.position.x, 0.03, avatarGroup.position.z);
       selectHalo.visible = true;
 
@@ -852,45 +852,51 @@
     }
 
     function deselectAvatar() {
-      selectedAvatar = null;
+      selectedAvatarId = null;
       selectHalo.visible = false;
       lookAtMode = false;
       linkMode = false;
       document.getElementById('inspector-panel').style.display = 'none';
     }
 
+    // INSPECTOR: EVENTOS REFORZADOS
     document.getElementById('insp-label').addEventListener('input', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.userData.label = e.target.value;
-      updateLabel(selectedAvatar, e.target.value);
+      const active = getSelectedAvatar();
+      if (!active) return;
+      active.userData.label = e.target.value;
+      updateLabel(active, e.target.value);
       saveStateToFirebase();
     });
 
     document.getElementById('insp-posture').addEventListener('change', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.userData.posture = e.target.value;
-      applyAvatarState(selectedAvatar);
+      const active = getSelectedAvatar();
+      if (!active) return;
+      active.userData.posture = e.target.value;
+      applyAvatarState(active);
       saveStateToFirebase();
     });
 
     document.getElementById('insp-emotion').addEventListener('change', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.userData.emotion = e.target.value;
-      applyAvatarState(selectedAvatar);
+      const active = getSelectedAvatar();
+      if (!active) return;
+      active.userData.emotion = e.target.value;
+      applyAvatarState(active);
       saveStateToFirebase();
     });
 
     document.getElementById('insp-rotation').addEventListener('input', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.rotation.y = (e.target.value * Math.PI) / 180;
+      const active = getSelectedAvatar();
+      if (!active) return;
+      active.rotation.y = (e.target.value * Math.PI) / 180;
       saveStateToFirebase();
     });
 
     document.getElementById('insp-scale').addEventListener('input', (e) => {
-      if (!selectedAvatar) return;
+      const active = getSelectedAvatar();
+      if (!active) return;
       const scale = e.target.value / 100;
-      selectedAvatar.userData.userScale = e.target.value;
-      selectedAvatar.scale.set(scale, scale, scale);
+      active.userData.userScale = e.target.value;
+      active.scale.set(scale, scale, scale);
       saveStateToFirebase();
     });
 
@@ -907,9 +913,10 @@
     document.getElementById('insp-deselect').addEventListener('click', deselectAvatar);
 
     document.getElementById('insp-delete').addEventListener('click', () => {
-      if (!selectedAvatar) return;
-      scene.remove(selectedAvatar);
-      const index = avatars.indexOf(selectedAvatar);
+      const active = getSelectedAvatar();
+      if (!active) return;
+      scene.remove(active);
+      const index = avatars.indexOf(active);
       if (index > -1) avatars.splice(index, 1);
       deselectAvatar();
       drawLinks();
@@ -989,6 +996,8 @@
         const data = docSnapshot.data();
 
         isRemoteUpdate = true;
+        const currentSavedId = selectedAvatarId;
+
         avatars.forEach(a => scene.remove(a));
         avatars.length = 0;
 
@@ -998,6 +1007,16 @@
             av.userData.linkedTo = aData.linkedTo || null;
           });
           drawLinks();
+        }
+
+        // Restaurar selección si la figura sigue existiendo
+        if (currentSavedId) {
+          const reselected = avatars.find(a => a.userData.id === currentSavedId);
+          if (reselected) {
+            selectAvatar(reselected);
+          } else {
+            deselectAvatar();
+          }
         }
 
         isRemoteUpdate = false;
