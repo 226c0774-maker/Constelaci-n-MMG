@@ -13,7 +13,7 @@
     }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #231f20;
+      background-color: #1f1b18;
       color: #f5efe6;
       overflow: hidden;
       height: 100vh;
@@ -31,19 +31,19 @@
     .panel {
       position: absolute;
       z-index: 10;
-      background: rgba(35, 31, 32, 0.88);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(212, 163, 115, 0.25);
+      background: rgba(35, 30, 27, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(212, 163, 115, 0.3);
       border-radius: 12px;
       padding: 16px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
       max-height: 90vh;
       overflow-y: auto;
     }
     #sync-panel {
       top: 20px;
       left: 20px;
-      width: 280px;
+      width: 290px;
     }
     #controls-panel {
       top: 20px;
@@ -53,13 +53,13 @@
     #inspector-panel {
       bottom: 20px;
       left: 20px;
-      width: 340px;
+      width: 350px;
       display: none;
     }
     h2, h3 {
       color: #e6ccb2;
       margin-bottom: 12px;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -78,7 +78,7 @@
       padding: 8px 10px;
       border-radius: 6px;
       border: 1px solid #7f5539;
-      background: #342c27;
+      background: #2e2621;
       color: #f5efe6;
       font-size: 0.85rem;
       outline: none;
@@ -172,7 +172,7 @@
     </div>
     <button id="btn-join-room">Unirse a Sala</button>
 
-    <div id="room-info">Estado: Modos local activo</div>
+    <div id="room-info">Estado: Modo local activo</div>
   </div>
 
   <!-- Panel de Creación de Representantes -->
@@ -183,7 +183,7 @@
       <input type="text" id="avatar-label" placeholder="Ej. Madre, Padre, Yo, Anhelo">
     </div>
     <div class="input-group">
-      <label>Tipo de Figura:</label>
+      <label>Forma Humana / Representación:</label>
       <select id="avatar-gender">
         <option value="adult-m">Hombre Adulto</option>
         <option value="adult-f">Mujer Adulta</option>
@@ -195,7 +195,7 @@
     <button id="add-avatar" class="btn-secondary">+ Introducir al Campo</button>
     <hr style="border-color: rgba(212,163,115,0.2); margin: 12px 0;">
     <div class="btn-group">
-      <button id="btn-screenshot">📷 Foto Campo</button>
+      <button id="btn-screenshot">📷 Capturar Campo</button>
       <button id="clear-board" class="btn-danger">Limpiar</button>
     </div>
   </div>
@@ -214,6 +214,7 @@
       <select id="insp-posture">
         <option value="standing">De Pie (Presencia)</option>
         <option value="bowing">Inclinado / Reverencia (Respeto/Honra)</option>
+
         <option value="lying">Tumbado (Fallecido / Excluido / Distancia)</option>
       </select>
     </div>
@@ -221,12 +222,12 @@
     <div class="input-group">
       <label>Estado / Aura Emocional:</label>
       <select id="insp-emotion">
-        <option value="neutral">Neutro (Gris Cálido)</option>
+        <option value="neutral">Neutro (Tono Calido)</option>
         <option value="love">Amor / Vinculo (Verde Esmeralda)</option>
         <option value="grief">Tristeza / Duelo (Azul Profundo)</option>
         <option value="anger">Enojo / Fuerza (Rojo Terracota)</option>
-        <option value="fear">Miedo / Tensión (Morado / Violeta)</option>
-        <option value="exclusion">Exclusión (Negro / Sombra)</option>
+        <option value="fear">Miedo / Tensión (Violeta)</option>
+        <option value="exclusion">Exclusión (Sombra Oscura)</option>
       </select>
     </div>
 
@@ -235,13 +236,18 @@
       <input type="range" id="insp-rotation" min="0" max="360" value="0">
     </div>
 
+    <div class="input-group">
+      <label>Escala / Proporción de Tamaño:</label>
+      <input type="range" id="insp-scale" min="50" max="150" value="100">
+    </div>
+
     <div class="btn-group">
       <button id="insp-deselect">Deseleccionar</button>
       <button id="insp-delete" class="btn-danger">Eliminar</button>
     </div>
   </div>
 
-  <!-- Integración Módulos Firebase v10 -->
+  <!-- Firebase v10 ESM Module -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -278,7 +284,7 @@
     // --- ESCENA THREE.JS ---
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x231f20);
+    scene.background = new THREE.Color(0x1f1b18);
 
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 16, 22);
@@ -292,7 +298,7 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // Luces
+    // Iluminación
     const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.85);
     scene.add(ambientLight);
 
@@ -301,7 +307,7 @@
     dirLight.castShadow = true;
     scene.add(dirLight);
 
-    // Tablero
+    // Tablero Madera
     const boardGeo = new THREE.CylinderGeometry(9, 9, 0.4, 64);
     const boardMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.5 });
     const board = new THREE.Mesh(boardGeo, boardMat);
@@ -309,373 +315,106 @@
     board.receiveShadow = true;
     scene.add(board);
 
-    // Malla del plano invisible para arrastrar
+    // Plano invisible para Drag & Drop
     const dragPlaneGeo = new THREE.PlaneGeometry(100, 100);
     dragPlaneGeo.rotateX(-Math.PI / 2);
     const dragPlane = new THREE.Mesh(dragPlaneGeo, new THREE.MeshBasicMaterial({ visible: false }));
     scene.add(dragPlane);
 
-    // Avatares
+    // Halo de Selección
+    const selectHaloGeo = new THREE.RingGeometry(0.6, 0.8, 32);
+    selectHaloGeo.rotateX(-Math.PI / 2);
+    const selectHaloMat = new THREE.MeshBasicMaterial({ color: 0xffd166, side: THREE.DoubleSide });
+    const selectHalo = new THREE.Mesh(selectHaloGeo, selectHaloMat);
+    selectHalo.visible = false;
+    scene.add(selectHalo);
+
+    // Avatares y Paleta
     const avatars = [];
     const EMOTION_COLORS = {
-      neutral: 0xa39171,
+      neutral: 0xd4a373,
       love: 0x2a9d8f,
       grief: 0x457b9d,
       anger: 0xe76f51,
       fear: 0x7209b7,
-      exclusion: 0x1d3557
+      exclusion: 0x212529
     };
 
-    // Creación de avatar humano estilizado
+    // --- CONSTRUCTOR DE FIGURA HUMANA ARTICULADA ---
     function buildHumanMesh(type = 'adult-m') {
       const group = new THREE.Group();
+      const bodyGroup = new THREE.Group(); // Subgrupo articulable para posturas
+      group.add(bodyGroup);
 
-      let scaleY = 1;
-      let scaleXZ = 1;
-      let bodyColor = 0xd4a373;
+      let isChild = type.includes('child');
+      let isFemale = type.includes('-f');
+      let isAbstract = type === 'abstract';
 
-      if (type.includes('child')) { scaleY = 0.6; scaleXZ = 0.75; }
-      if (type === 'adult-f' || type === 'child-f') bodyColor = 0xddb892;
-      if (type === 'abstract') bodyColor = 0x8d99ae;
+      let scaleY = isChild ? 0.65 : 1.0;
+      let scaleXZ = isChild ? 0.75 : 1.0;
+      let baseColor = isFemale ? 0xddb892 : 0xd4a373;
+      if (isAbstract) baseColor = 0x8d99ae;
 
-      // Base / Torso
-      const bodyGeo = new THREE.CylinderGeometry(0.25 * scaleXZ, 0.4 * scaleXZ, 1.6 * scaleY, 32);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = (1.6 * scaleY) / 2;
-      body.castShadow = true;
-      group.add(body);
+      const mat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.35 });
 
-      // Cabeza
-      const headGeo = new THREE.SphereGeometry(0.32 * scaleXZ, 32, 32);
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.3 });
-      const head = new THREE.Mesh(headGeo, headMat);
-      head.position.y = (1.6 * scaleY) + (0.32 * scaleXZ) + 0.05;
-      head.castShadow = true;
-      group.add(head);
+      if (isAbstract) {
+        // Objeto geométrico abstracto
+        const geo = new THREE.OctahedronGeometry(0.8);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.y = 1.0;
+        mesh.castShadow = true;
+        bodyGroup.add(mesh);
+      } else {
+        // === ANATOMÍA HUMANA ===
+        // Torso / Pecho
+        const torsoTopWidth = isFemale ? 0.32 : 0.42;
+        const torsoGeo = new THREE.CylinderGeometry(torsoTopWidth * scaleXZ, 0.28 * scaleXZ, 0.8 * scaleY, 16);
+        const torso = new THREE.Mesh(torsoGeo, mat);
+        torso.position.y = (0.9 * scaleY) + (0.4 * scaleY);
+        torso.castShadow = true;
+        bodyGroup.add(torso);
 
-      // Indicador de mirada (nariz/visor)
-      const gazeGeo = new THREE.ConeGeometry(0.1, 0.3, 16);
-      gazeGeo.rotateX(Math.PI / 2);
-      const gazeMat = new THREE.MeshStandardMaterial({ color: 0x7f5539 });
-      const gaze = new THREE.Mesh(gazeGeo, gazeMat);
-      gaze.position.set(0, head.position.y, 0.35 * scaleXZ);
-      group.add(gaze);
+        // Pelvis / Cadera
+        const hipGeo = new THREE.CylinderGeometry(0.28 * scaleXZ, 0.22 * scaleXZ, 0.3 * scaleY, 16);
+        const hip = new THREE.Mesh(hipGeo, mat);
+        hip.position.y = (0.75 * scaleY);
+        hip.castShadow = true;
+        bodyGroup.add(hip);
 
-      // Anillo Aura Emocional en la base
-      const auraGeo = new THREE.RingGeometry(0.5 * scaleXZ, 0.7 * scaleXZ, 32);
+        // Piernas
+        const legGeo = new THREE.CylinderGeometry(0.1 * scaleXZ, 0.08 * scaleXZ, 0.75 * scaleY, 16);
+        const legL = new THREE.Mesh(legGeo, mat);
+        legL.position.set(-0.13 * scaleXZ, 0.375 * scaleY, 0);
+        legL.castShadow = true;
+        bodyGroup.add(legL);
+
+        const legR = new THREE.Mesh(legGeo, mat);
+        legR.position.set(0.13 * scaleXZ, 0.375 * scaleY, 0);
+        legR.castShadow = true;
+        bodyGroup.add(legR);
+
+        // Cuello y Cabeza
+        const headGeo = new THREE.SphereGeometry(0.32 * scaleXZ, 32, 32);
+        const head = new THREE.Mesh(headGeo, mat);
+        head.position.y = (1.3 * scaleY) + (0.32 * scaleXZ) + 0.1;
+        head.castShadow = true;
+        bodyGroup.add(head);
+
+        // Nariz / Vector de Mirada
+        const gazeGeo = new THREE.ConeGeometry(0.08 * scaleXZ, 0.25, 16);
+        gazeGeo.rotateX(Math.PI / 2);
+        const gazeMat = new THREE.MeshStandardMaterial({ color: 0x5c3d2e });
+        const gaze = new THREE.Mesh(gazeGeo, gazeMat);
+        gaze.position.set(0, head.position.y, 0.35 * scaleXZ);
+        bodyGroup.add(gaze);
+      }
+
+      // Anillo Aura Emocional
+      const auraGeo = new THREE.RingGeometry(0.55 * scaleXZ, 0.75 * scaleXZ, 32);
       auraGeo.rotateX(-Math.PI / 2);
       const auraMat = new THREE.MeshBasicMaterial({ color: EMOTION_COLORS.neutral, side: THREE.DoubleSide });
       const aura = new THREE.Mesh(auraGeo, auraMat);
       aura.position.y = 0.02;
       group.add(aura);
-      group.userData.auraMesh = aura;
 
-      // Etiqueta 2D usando Canvas Texture
-      const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 64;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = "rgba(35,31,32,0.85)";
-      ctx.fillRect(0, 0, 256, 64);
-      ctx.font = "Bold 24px Segoe UI";
-      ctx.fillStyle = "#f5efe6";
-      ctx.textAlign = "center";
-      ctx.fillText("Persona", 128, 40);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const spriteMat = new THREE.SpriteMaterial({ map: texture });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.y = head.position.y + 0.7;
-      sprite.scale.set(1.8, 0.45, 1);
-      group.add(sprite);
-
-      group.userData.labelCanvas = canvas;
-      group.userData.labelTexture = texture;
-      group.userData.labelSprite = sprite;
-
-      return group;
-    }
-
-    function updateLabel(avatarGroup, text) {
-      const canvas = avatarGroup.userData.labelCanvas;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, 256, 64);
-      ctx.fillStyle = "rgba(35,31,32,0.85)";
-      ctx.fillRect(0, 0, 256, 64);
-      ctx.font = "Bold 24px Segoe UI";
-      ctx.fillStyle = "#f5efe6";
-      ctx.textAlign = "center";
-      ctx.fillText(text || "Persona", 128, 40);
-      avatarGroup.userData.labelTexture.needsUpdate = true;
-    }
-
-    function addAvatarToScene(data) {
-      const avatarGroup = buildHumanMesh(data.type || 'adult-m');
-      avatarGroup.position.set(data.x || 0, 0, data.z || 0);
-      avatarGroup.rotation.y = data.rotation || 0;
-      avatarGroup.userData.id = data.id;
-      avatarGroup.userData.label = data.label || 'Persona';
-      avatarGroup.userData.emotion = data.emotion || 'neutral';
-      avatarGroup.userData.posture = data.posture || 'standing';
-
-      updateLabel(avatarGroup, data.label);
-      applyAvatarState(avatarGroup);
-
-      scene.add(avatarGroup);
-      avatars.push(avatarGroup);
-      return avatarGroup;
-    }
-
-    function applyAvatarState(avatarGroup) {
-      // Color Emocional
-      const color = EMOTION_COLORS[avatarGroup.userData.emotion] || EMOTION_COLORS.neutral;
-      if (avatarGroup.userData.auraMesh) avatarGroup.userData.auraMesh.material.color.setHex(color);
-
-      // Postura
-      const posture = avatarGroup.userData.posture;
-      if (posture === 'bowing') {
-        avatarGroup.rotation.x = Math.PI / 4;
-        avatarGroup.position.y = -0.2;
-      } else if (posture === 'lying') {
-        avatarGroup.rotation.x = Math.PI / 2;
-        avatarGroup.position.y = -0.3;
-      } else {
-        avatarGroup.rotation.x = 0;
-        avatarGroup.position.y = 0;
-      }
-    }
-
-    // --- ARRASTRE (DRAG & DROP) Y SELECCIÓN ---
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let isDragging = false;
-    let dragTarget = null;
-
-    window.addEventListener('pointerdown', (e) => {
-      // Ignorar si hace clic en paneles UI
-      if (e.target.closest('.panel')) return;
-
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(avatars, true);
-
-      if (intersects.length > 0) {
-        let obj = intersects[0].object;
-        while (obj.parent && obj.parent !== scene) obj = obj.parent;
-        
-        dragTarget = obj;
-        isDragging = true;
-        controls.enabled = false;
-        selectAvatar(obj);
-      } else {
-        deselectAvatar();
-      }
-    });
-
-    window.addEventListener('pointermove', (e) => {
-      if (!isDragging || !dragTarget) return;
-
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObject(dragPlane);
-
-      if (intersects.length > 0) {
-        const point = intersects[0].point;
-        dragTarget.position.x = point.x;
-        dragTarget.position.z = point.z;
-      }
-    });
-
-    window.addEventListener('pointerup', () => {
-      if (isDragging && dragTarget) {
-        saveStateToFirebase();
-      }
-      isDragging = false;
-      dragTarget = null;
-      controls.enabled = true;
-    });
-
-    function selectAvatar(avatarGroup) {
-      selectedAvatar = avatarGroup;
-      document.getElementById('inspector-panel').style.display = 'block';
-      document.getElementById('insp-title').innerText = avatarGroup.userData.label;
-      document.getElementById('insp-label').value = avatarGroup.userData.label;
-      document.getElementById('insp-posture').value = avatarGroup.userData.posture;
-      document.getElementById('insp-emotion').value = avatarGroup.userData.emotion;
-      document.getElementById('insp-rotation').value = Math.round((avatarGroup.rotation.y * 180) / Math.PI);
-    }
-
-    function deselectAvatar() {
-      selectedAvatar = null;
-      document.getElementById('inspector-panel').style.display = 'none';
-    }
-
-    // --- MANEJO DE EVENTOS INSPECTOR ---
-    document.getElementById('insp-label').addEventListener('input', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.userData.label = e.target.value;
-      updateLabel(selectedAvatar, e.target.value);
-      saveStateToFirebase();
-    });
-
-    document.getElementById('insp-posture').addEventListener('change', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.userData.posture = e.target.value;
-      applyAvatarState(selectedAvatar);
-      saveStateToFirebase();
-    });
-
-    document.getElementById('insp-emotion').addEventListener('change', (e) => {
-      if (!selectedAvatar) return;
-      selectedAvatar.userData.emotion = e.target.value;
-      applyAvatarState(selectedAvatar);
-      saveStateToFirebase();
-    });
-
-    document.getElementById('insp-rotation').addEventListener('input', (e) => {
-      if (!selectedAvatar) return;
-      const rad = (e.target.value * Math.PI) / 180;
-      selectedAvatar.rotation.y = rad;
-      saveStateToFirebase();
-    });
-
-    document.getElementById('insp-deselect').addEventListener('click', deselectAvatar);
-
-    document.getElementById('insp-delete').addEventListener('click', () => {
-      if (!selectedAvatar) return;
-      scene.remove(selectedAvatar);
-      const index = avatars.indexOf(selectedAvatar);
-      if (index > -1) avatars.splice(index, 1);
-      deselectAvatar();
-      saveStateToFirebase();
-    });
-
-    // --- FIRESTORE BACKEND ---
-    function saveStateToFirebase() {
-      if (!currentRoomId || isRemoteUpdate) return;
-
-      const dataAvatars = avatars.map(a => ({
-        id: a.userData.id,
-        label: a.userData.label,
-        type: a.userData.type || 'adult-m',
-        emotion: a.userData.emotion,
-        posture: a.userData.posture,
-        x: a.position.x,
-        z: a.position.z,
-        rotation: a.rotation.y
-      }));
-
-      updateDoc(doc(db, "rooms", currentRoomId), {
-        avatars: dataAvatars,
-        updatedAt: new Date()
-      }).catch(err => console.error("Error guardando:", err));
-    }
-
-    document.getElementById('btn-create-room').addEventListener('click', async () => {
-      const userName = document.getElementById('user-name').value || 'Anfitrión';
-      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      currentRoomId = roomId;
-
-      try {
-        await setDoc(doc(db, "rooms", roomId), {
-          createdBy: userName,
-          createdAt: new Date(),
-          avatars: []
-        });
-        document.getElementById('room-info').innerHTML = `Sala Activa: <b>${roomId}</b>`;
-        showNotif(`Sala ${roomId} Creada`);
-        listenToRoom(roomId);
-      } catch (e) {
-        showNotif("Error al crear sala");
-      }
-    });
-
-    document.getElementById('btn-join-room').addEventListener('click', () => {
-      const roomId = document.getElementById('room-code-input').value.trim().toUpperCase();
-      if (!roomId) return alert("Código inválido");
-      currentRoomId = roomId;
-      document.getElementById('room-info').innerHTML = `Conectado a: <b>${roomId}</b>`;
-      listenToRoom(roomId);
-      showNotif(`Unido a ${roomId}`);
-    });
-
-    function listenToRoom(roomId) {
-      onSnapshot(doc(db, "rooms", roomId), (docSnapshot) => {
-        if (!docSnapshot.exists()) return;
-        const data = docSnapshot.data();
-
-        isRemoteUpdate = true;
-        
-        // Sincronizar figuras
-        avatars.forEach(a => scene.remove(a));
-        avatars.length = 0;
-
-        if (data.avatars) {
-          data.avatars.forEach(aData => {
-            addAvatarToScene(aData);
-          });
-        }
-
-        isRemoteUpdate = false;
-      });
-    }
-
-    // Agregar nuevo representante
-    document.getElementById('add-avatar').addEventListener('click', () => {
-      const label = document.getElementById('avatar-label').value || 'Persona';
-      const type = document.getElementById('avatar-gender').value;
-
-      const newAvatar = addAvatarToScene({
-        id: 'av_' + Date.now(),
-        label: label,
-        type: type,
-        x: (Math.random() - 0.5) * 5,
-        z: (Math.random() - 0.5) * 5,
-        rotation: 0,
-        emotion: 'neutral',
-        posture: 'standing'
-      });
-
-      selectAvatar(newAvatar);
-      saveStateToFirebase();
-    });
-
-    // Limpiar Tablero
-    document.getElementById('clear-board').addEventListener('click', () => {
-      avatars.forEach(a => scene.remove(a));
-      avatars.length = 0;
-      deselectAvatar();
-      saveStateToFirebase();
-    });
-
-    // Foto / Captura del Campo
-    document.getElementById('btn-screenshot').addEventListener('click', () => {
-      renderer.render(scene, camera);
-      const dataURL = renderer.domElement.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `Constelacion_${currentRoomId || 'local'}.png`;
-      link.href = dataURL;
-      link.click();
-    });
-
-    // Resizing
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // Render loop
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
-    animate();
-  </script>
-</body>
-</html>
+      // ---
