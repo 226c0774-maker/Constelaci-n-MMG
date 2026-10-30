@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares Lainez 3D</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro</title>
   <style>
     * {
       box-sizing: border-box;
@@ -13,7 +13,7 @@
     }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #2b2622;
+      background-color: #231f20;
       color: #f5efe6;
       overflow: hidden;
       height: 100vh;
@@ -31,62 +31,69 @@
     .panel {
       position: absolute;
       z-index: 10;
-      background: rgba(43, 38, 34, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(212, 163, 115, 0.3);
+      background: rgba(35, 31, 32, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(212, 163, 115, 0.25);
       border-radius: 12px;
       padding: 16px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      max-height: 90vh;
+      overflow-y: auto;
     }
     #sync-panel {
       top: 20px;
       left: 20px;
-      width: 300px;
+      width: 280px;
     }
     #controls-panel {
+      top: 20px;
+      right: 20px;
+      width: 320px;
+    }
+    #inspector-panel {
       bottom: 20px;
       left: 20px;
-      width: 320px;
+      width: 340px;
+      display: none;
     }
     h2, h3 {
       color: #e6ccb2;
       margin-bottom: 12px;
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .input-group {
       margin-bottom: 10px;
     }
     label {
       display: block;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: #ddb892;
       margin-bottom: 4px;
     }
     input, select, button {
       width: 100%;
-      padding: 8px 12px;
+      padding: 8px 10px;
       border-radius: 6px;
       border: 1px solid #7f5539;
-      background: #3c342f;
+      background: #342c27;
       color: #f5efe6;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       outline: none;
     }
     button {
       background: #b08968;
       color: #fff;
-      font-weight: bold;
+      font-weight: 600;
       cursor: pointer;
       border: none;
-      transition: background 0.2s, transform 0.1s;
-      margin-top: 5px;
+      transition: all 0.2s;
+      margin-top: 4px;
     }
     button:hover {
-      background: #7f5539;
-    }
-    button:active {
-      transform: scale(0.98);
+      background: #9c6644;
     }
     .btn-secondary {
       background: #588157;
@@ -94,39 +101,52 @@
     .btn-secondary:hover {
       background: #3a5a40;
     }
+    .btn-danger {
+      background: #9a031e;
+    }
+    .btn-danger:hover {
+      background: #5f0f40;
+    }
     .btn-group {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
     .btn-group button {
       flex: 1;
     }
     #room-info {
-      margin-top: 10px;
+      margin-top: 8px;
       padding: 8px;
-      background: rgba(230, 204, 178, 0.1);
+      background: rgba(230, 204, 178, 0.08);
       border-radius: 6px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       text-align: center;
-      word-break: break-all;
     }
-    /* Notificaciones */
     #notification {
       position: absolute;
       top: 20px;
-      right: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 100;
-      padding: 12px 20px;
-      border-radius: 8px;
+      padding: 10px 24px;
+      border-radius: 20px;
       background: #b08968;
       color: white;
+      font-size: 0.88rem;
       font-weight: 500;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
       display: none;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      background: rgba(255,255,255,0.1);
+      margin-left: 4px;
     }
   </style>
 
-  <!-- Importación de Three.js y OrbitControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
@@ -139,41 +159,94 @@
   <div id="sync-panel" class="panel">
     <h2>Sincronización en Vivo</h2>
     <div class="input-group">
-      <label for="user-name">Tu Nombre:</label>
-      <input type="text" id="user-name" placeholder="Ej. Terapeuta / Cliente">
+      <label for="user-name">Tu Nombre / Rol:</label>
+      <input type="text" id="user-name" placeholder="Ej. Terapeuta">
     </div>
-    
-    <div class="btn-group">
-      <button id="btn-create-room" class="btn-secondary">Crear Sala</button>
-    </div>
+    <button id="btn-create-room" class="btn-secondary">Crear Nueva Sala</button>
 
-    <div style="margin: 10px 0; text-align: center; font-size: 0.8rem; color: #ddb892;">— O ÚNETE A UNA —</div>
+    <div style="margin: 10px 0; text-align: center; font-size: 0.75rem; color: #ddb892;">— O ÚNETE A UNA —</div>
 
     <div class="input-group">
       <label for="room-code-input">Código de Sala:</label>
-      <input type="text" id="room-code-input" placeholder="Pega el código aquí">
+      <input type="text" id="room-code-input" placeholder="Ej. X8A2K9">
     </div>
-    <button id="btn-join-room">Unirse a la Sala</button>
+    <button id="btn-join-room">Unirse a Sala</button>
 
-    <div id="room-info">Estado: Sin conexión</div>
+    <div id="room-info">Estado: Modos local activo</div>
   </div>
 
-  <!-- Panel de Controles del Campo -->
+  <!-- Panel de Creación de Representantes -->
   <div id="controls-panel" class="panel">
-    <h2>Elementos del Campo</h2>
+    <h2>Añadir Representante</h2>
+    <div class="input-group">
+      <label>Rol / Nombre del Familiar:</label>
+      <input type="text" id="avatar-label" placeholder="Ej. Madre, Padre, Yo, Anhelo">
+    </div>
+    <div class="input-group">
+      <label>Tipo de Figura:</label>
+      <select id="avatar-gender">
+        <option value="adult-m">Hombre Adulto</option>
+        <option value="adult-f">Mujer Adulta</option>
+        <option value="child-m">Niño</option>
+        <option value="child-f">Niña</option>
+        <option value="abstract">Elemento Abstracto / Síntoma</option>
+      </select>
+    </div>
+    <button id="add-avatar" class="btn-secondary">+ Introducir al Campo</button>
+    <hr style="border-color: rgba(212,163,115,0.2); margin: 12px 0;">
     <div class="btn-group">
-      <button id="add-avatar">Add Persona</button>
-      <button id="clear-board" style="background: #a44a4a;">Limpiar</button>
+      <button id="btn-screenshot">📷 Foto Campo</button>
+      <button id="clear-board" class="btn-danger">Limpiar</button>
     </div>
   </div>
 
-  <!-- Configuración e Integración NAtiva de Firebase v10 (Module) -->
+  <!-- Panel Inspector de Figura Seleccionada -->
+  <div id="inspector-panel" class="panel">
+    <h2>Propiedades <span id="insp-title" class="badge"></span></h2>
+    
+    <div class="input-group">
+      <label>Etiqueta / Nombre:</label>
+      <input type="text" id="insp-label">
+    </div>
+
+    <div class="input-group">
+      <label>Postura Sistémica:</label>
+      <select id="insp-posture">
+        <option value="standing">De Pie (Presencia)</option>
+        <option value="bowing">Inclinado / Reverencia (Respeto/Honra)</option>
+        <option value="lying">Tumbado (Fallecido / Excluido / Distancia)</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label>Estado / Aura Emocional:</label>
+      <select id="insp-emotion">
+        <option value="neutral">Neutro (Gris Cálido)</option>
+        <option value="love">Amor / Vinculo (Verde Esmeralda)</option>
+        <option value="grief">Tristeza / Duelo (Azul Profundo)</option>
+        <option value="anger">Enojo / Fuerza (Rojo Terracota)</option>
+        <option value="fear">Miedo / Tensión (Morado / Violeta)</option>
+        <option value="exclusion">Exclusión (Negro / Sombra)</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label>Orientación / Mirada (Grados):</label>
+      <input type="range" id="insp-rotation" min="0" max="360" value="0">
+    </div>
+
+    <div class="btn-group">
+      <button id="insp-deselect">Deseleccionar</button>
+      <button id="insp-delete" class="btn-danger">Eliminar</button>
+    </div>
+  </div>
+
+  <!-- Integración Módulos Firebase v10 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // Configuración de Firebase para lainez-3d
     const firebaseConfig = {
       apiKey: "AIzaSyAP8f8_XIDwprNnJRuKX24AJjvy26CW9Bs",
       authDomain: "lainez-3d.firebaseapp.com",
@@ -183,36 +256,34 @@
       appId: "1:60308784880:web:8ac971ae4bf9ff105fa435"
     };
 
-    // Inicialización de Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
 
     let currentRoomId = null;
-    let isUpdatingFromRemote = false;
+    let isRemoteUpdate = false;
+    let selectedAvatar = null;
 
-    // Autenticación Anónima
     signInAnonymously(auth)
-      .then(() => showNotification("Autenticado en backend"))
+      .then(() => showNotif("Conectado a Firebase"))
       .catch((err) => console.error("Error Auth:", err));
 
-    // Funciones para Notificaciones UI
-    function showNotification(msg) {
+    function showNotif(msg) {
       const notif = document.getElementById('notification');
       notif.innerText = msg;
       notif.style.display = 'block';
-      setTimeout(() => { notif.style.display = 'none'; }, 3000);
+      setTimeout(() => { notif.style.display = 'none'; }, 2800);
     }
 
     // --- ESCENA THREE.JS ---
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x2b2622);
+    scene.background = new THREE.Color(0x231f20);
 
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 15, 20);
+    camera.position.set(0, 16, 22);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
@@ -221,60 +292,289 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // Iluminación Cálida
-    const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.7);
+    // Luces
+    const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.85);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffe8d6, 0.8);
-    dirLight.position.set(10, 20, 10);
+    const dirLight = new THREE.DirectionalLight(0xffe8d6, 0.9);
+    dirLight.position.set(12, 24, 12);
     dirLight.castShadow = true;
     scene.add(dirLight);
 
-    // Tablero / Mesa de Madera
-    const boardGeometry = new THREE.CylinderGeometry(8, 8, 0.4, 64);
-    const boardMaterial = new THREE.MeshStandardMaterial({ color: 0x7f5539, roughness: 0.4 });
-    const board = new THREE.Mesh(boardGeometry, boardMaterial);
+    // Tablero
+    const boardGeo = new THREE.CylinderGeometry(9, 9, 0.4, 64);
+    const boardMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.5 });
+    const board = new THREE.Mesh(boardGeo, boardMat);
     board.position.y = -0.2;
     board.receiveShadow = true;
     scene.add(board);
 
-    // Lista de Avatares en Escena
-    const avatars = [];
+    // Malla del plano invisible para arrastrar
+    const dragPlaneGeo = new THREE.PlaneGeometry(100, 100);
+    dragPlaneGeo.rotateX(-Math.PI / 2);
+    const dragPlane = new THREE.Mesh(dragPlaneGeo, new THREE.MeshBasicMaterial({ visible: false }));
+    scene.add(dragPlane);
 
-    function createAvatarMesh(color = 0xddb892) {
+    // Avatares
+    const avatars = [];
+    const EMOTION_COLORS = {
+      neutral: 0xa39171,
+      love: 0x2a9d8f,
+      grief: 0x457b9d,
+      anger: 0xe76f51,
+      fear: 0x7209b7,
+      exclusion: 0x1d3557
+    };
+
+    // Creación de avatar humano estilizado
+    function buildHumanMesh(type = 'adult-m') {
       const group = new THREE.Group();
-      
-      // Cuerpo
-      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.5, 1.5, 32);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
+
+      let scaleY = 1;
+      let scaleXZ = 1;
+      let bodyColor = 0xd4a373;
+
+      if (type.includes('child')) { scaleY = 0.6; scaleXZ = 0.75; }
+      if (type === 'adult-f' || type === 'child-f') bodyColor = 0xddb892;
+      if (type === 'abstract') bodyColor = 0x8d99ae;
+
+      // Base / Torso
+      const bodyGeo = new THREE.CylinderGeometry(0.25 * scaleXZ, 0.4 * scaleXZ, 1.6 * scaleY, 32);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3 });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 0.75;
+      body.position.y = (1.6 * scaleY) / 2;
       body.castShadow = true;
       group.add(body);
 
       // Cabeza
-      const headGeo = new THREE.SphereGeometry(0.35, 32, 32);
+      const headGeo = new THREE.SphereGeometry(0.32 * scaleXZ, 32, 32);
       const headMat = new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.3 });
       const head = new THREE.Mesh(headGeo, headMat);
-      head.position.y = 1.75;
+      head.position.y = (1.6 * scaleY) + (0.32 * scaleXZ) + 0.05;
       head.castShadow = true;
       group.add(head);
+
+      // Indicador de mirada (nariz/visor)
+      const gazeGeo = new THREE.ConeGeometry(0.1, 0.3, 16);
+      gazeGeo.rotateX(Math.PI / 2);
+      const gazeMat = new THREE.MeshStandardMaterial({ color: 0x7f5539 });
+      const gaze = new THREE.Mesh(gazeGeo, gazeMat);
+      gaze.position.set(0, head.position.y, 0.35 * scaleXZ);
+      group.add(gaze);
+
+      // Anillo Aura Emocional en la base
+      const auraGeo = new THREE.RingGeometry(0.5 * scaleXZ, 0.7 * scaleXZ, 32);
+      auraGeo.rotateX(-Math.PI / 2);
+      const auraMat = new THREE.MeshBasicMaterial({ color: EMOTION_COLORS.neutral, side: THREE.DoubleSide });
+      const aura = new THREE.Mesh(auraGeo, auraMat);
+      aura.position.y = 0.02;
+      group.add(aura);
+      group.userData.auraMesh = aura;
+
+      // Etiqueta 2D usando Canvas Texture
+      const canvas = document.createElement('canvas');
+      canvas.width = 256; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = "rgba(35,31,32,0.85)";
+      ctx.fillRect(0, 0, 256, 64);
+      ctx.font = "Bold 24px Segoe UI";
+      ctx.fillStyle = "#f5efe6";
+      ctx.textAlign = "center";
+      ctx.fillText("Persona", 128, 40);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.position.y = head.position.y + 0.7;
+      sprite.scale.set(1.8, 0.45, 1);
+      group.add(sprite);
+
+      group.userData.labelCanvas = canvas;
+      group.userData.labelTexture = texture;
+      group.userData.labelSprite = sprite;
 
       return group;
     }
 
-    function addAvatarToScene(id, x = 0, z = 0) {
-      const avatar = createAvatarMesh();
-      avatar.position.set(x, 0, z);
-      avatar.userData = { id: id };
-      scene.add(avatar);
-      avatars.push(avatar);
-      return avatar;
+    function updateLabel(avatarGroup, text) {
+      const canvas = avatarGroup.userData.labelCanvas;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 256, 64);
+      ctx.fillStyle = "rgba(35,31,32,0.85)";
+      ctx.fillRect(0, 0, 256, 64);
+      ctx.font = "Bold 24px Segoe UI";
+      ctx.fillStyle = "#f5efe6";
+      ctx.textAlign = "center";
+      ctx.fillText(text || "Persona", 128, 40);
+      avatarGroup.userData.labelTexture.needsUpdate = true;
     }
 
-    // --- MANEJO DE EVENTOS Y BOTONES ---
+    function addAvatarToScene(data) {
+      const avatarGroup = buildHumanMesh(data.type || 'adult-m');
+      avatarGroup.position.set(data.x || 0, 0, data.z || 0);
+      avatarGroup.rotation.y = data.rotation || 0;
+      avatarGroup.userData.id = data.id;
+      avatarGroup.userData.label = data.label || 'Persona';
+      avatarGroup.userData.emotion = data.emotion || 'neutral';
+      avatarGroup.userData.posture = data.posture || 'standing';
 
-    // Crear Sala
+      updateLabel(avatarGroup, data.label);
+      applyAvatarState(avatarGroup);
+
+      scene.add(avatarGroup);
+      avatars.push(avatarGroup);
+      return avatarGroup;
+    }
+
+    function applyAvatarState(avatarGroup) {
+      // Color Emocional
+      const color = EMOTION_COLORS[avatarGroup.userData.emotion] || EMOTION_COLORS.neutral;
+      if (avatarGroup.userData.auraMesh) avatarGroup.userData.auraMesh.material.color.setHex(color);
+
+      // Postura
+      const posture = avatarGroup.userData.posture;
+      if (posture === 'bowing') {
+        avatarGroup.rotation.x = Math.PI / 4;
+        avatarGroup.position.y = -0.2;
+      } else if (posture === 'lying') {
+        avatarGroup.rotation.x = Math.PI / 2;
+        avatarGroup.position.y = -0.3;
+      } else {
+        avatarGroup.rotation.x = 0;
+        avatarGroup.position.y = 0;
+      }
+    }
+
+    // --- ARRASTRE (DRAG & DROP) Y SELECCIÓN ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let isDragging = false;
+    let dragTarget = null;
+
+    window.addEventListener('pointerdown', (e) => {
+      // Ignorar si hace clic en paneles UI
+      if (e.target.closest('.panel')) return;
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(avatars, true);
+
+      if (intersects.length > 0) {
+        let obj = intersects[0].object;
+        while (obj.parent && obj.parent !== scene) obj = obj.parent;
+        
+        dragTarget = obj;
+        isDragging = true;
+        controls.enabled = false;
+        selectAvatar(obj);
+      } else {
+        deselectAvatar();
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging || !dragTarget) return;
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(dragPlane);
+
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        dragTarget.position.x = point.x;
+        dragTarget.position.z = point.z;
+      }
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (isDragging && dragTarget) {
+        saveStateToFirebase();
+      }
+      isDragging = false;
+      dragTarget = null;
+      controls.enabled = true;
+    });
+
+    function selectAvatar(avatarGroup) {
+      selectedAvatar = avatarGroup;
+      document.getElementById('inspector-panel').style.display = 'block';
+      document.getElementById('insp-title').innerText = avatarGroup.userData.label;
+      document.getElementById('insp-label').value = avatarGroup.userData.label;
+      document.getElementById('insp-posture').value = avatarGroup.userData.posture;
+      document.getElementById('insp-emotion').value = avatarGroup.userData.emotion;
+      document.getElementById('insp-rotation').value = Math.round((avatarGroup.rotation.y * 180) / Math.PI);
+    }
+
+    function deselectAvatar() {
+      selectedAvatar = null;
+      document.getElementById('inspector-panel').style.display = 'none';
+    }
+
+    // --- MANEJO DE EVENTOS INSPECTOR ---
+    document.getElementById('insp-label').addEventListener('input', (e) => {
+      if (!selectedAvatar) return;
+      selectedAvatar.userData.label = e.target.value;
+      updateLabel(selectedAvatar, e.target.value);
+      saveStateToFirebase();
+    });
+
+    document.getElementById('insp-posture').addEventListener('change', (e) => {
+      if (!selectedAvatar) return;
+      selectedAvatar.userData.posture = e.target.value;
+      applyAvatarState(selectedAvatar);
+      saveStateToFirebase();
+    });
+
+    document.getElementById('insp-emotion').addEventListener('change', (e) => {
+      if (!selectedAvatar) return;
+      selectedAvatar.userData.emotion = e.target.value;
+      applyAvatarState(selectedAvatar);
+      saveStateToFirebase();
+    });
+
+    document.getElementById('insp-rotation').addEventListener('input', (e) => {
+      if (!selectedAvatar) return;
+      const rad = (e.target.value * Math.PI) / 180;
+      selectedAvatar.rotation.y = rad;
+      saveStateToFirebase();
+    });
+
+    document.getElementById('insp-deselect').addEventListener('click', deselectAvatar);
+
+    document.getElementById('insp-delete').addEventListener('click', () => {
+      if (!selectedAvatar) return;
+      scene.remove(selectedAvatar);
+      const index = avatars.indexOf(selectedAvatar);
+      if (index > -1) avatars.splice(index, 1);
+      deselectAvatar();
+      saveStateToFirebase();
+    });
+
+    // --- FIRESTORE BACKEND ---
+    function saveStateToFirebase() {
+      if (!currentRoomId || isRemoteUpdate) return;
+
+      const dataAvatars = avatars.map(a => ({
+        id: a.userData.id,
+        label: a.userData.label,
+        type: a.userData.type || 'adult-m',
+        emotion: a.userData.emotion,
+        posture: a.userData.posture,
+        x: a.position.x,
+        z: a.position.z,
+        rotation: a.rotation.y
+      }));
+
+      updateDoc(doc(db, "rooms", currentRoomId), {
+        avatars: dataAvatars,
+        updatedAt: new Date()
+      }).catch(err => console.error("Error guardando:", err));
+    }
+
     document.getElementById('btn-create-room').addEventListener('click', async () => {
       const userName = document.getElementById('user-name').value || 'Anfitrión';
       const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -287,79 +587,89 @@
           avatars: []
         });
         document.getElementById('room-info').innerHTML = `Sala Activa: <b>${roomId}</b>`;
-        showNotification(`Sala ${roomId} creada`);
+        showNotif(`Sala ${roomId} Creada`);
         listenToRoom(roomId);
       } catch (e) {
-        console.error("Error creando sala: ", e);
-        showNotification("Error al crear la sala");
+        showNotif("Error al crear sala");
       }
     });
 
-    // Unirse a Sala
     document.getElementById('btn-join-room').addEventListener('click', () => {
       const roomId = document.getElementById('room-code-input').value.trim().toUpperCase();
-      if (!roomId) return alert("Ingresa un código de sala válido.");
-      
+      if (!roomId) return alert("Código inválido");
       currentRoomId = roomId;
-      document.getElementById('room-info').innerHTML = `Conectado a Sala: <b>${roomId}</b>`;
+      document.getElementById('room-info').innerHTML = `Conectado a: <b>${roomId}</b>`;
       listenToRoom(roomId);
-      showNotification(`Conectado a ${roomId}`);
+      showNotif(`Unido a ${roomId}`);
     });
 
-    // Escuchar Cambios en Firestore (Sincronización en Tiempo Real)
     function listenToRoom(roomId) {
       onSnapshot(doc(db, "rooms", roomId), (docSnapshot) => {
         if (!docSnapshot.exists()) return;
         const data = docSnapshot.data();
+
+        isRemoteUpdate = true;
         
-        isUpdatingFromRemote = true;
-        // Limpiar avatares actuales
+        // Sincronizar figuras
         avatars.forEach(a => scene.remove(a));
         avatars.length = 0;
 
-        // Renderizar avatares remotos
         if (data.avatars) {
-          data.avatars.forEach(avatarData => {
-            addAvatarToScene(avatarData.id, avatarData.x, avatarData.z);
+          data.avatars.forEach(aData => {
+            addAvatarToScene(aData);
           });
         }
-        isUpdatingFromRemote = false;
+
+        isRemoteUpdate = false;
       });
     }
 
-    // Agregar Avatar
-    document.getElementById('add-avatar').addEventListener('click', async () => {
-      const id = 'avatar_' + Date.now();
-      const x = (Math.random() - 0.5) * 6;
-      const z = (Math.random() - 0.5) * 6;
+    // Agregar nuevo representante
+    document.getElementById('add-avatar').addEventListener('click', () => {
+      const label = document.getElementById('avatar-label').value || 'Persona';
+      const type = document.getElementById('avatar-gender').value;
 
-      addAvatarToScene(id, x, z);
+      const newAvatar = addAvatarToScene({
+        id: 'av_' + Date.now(),
+        label: label,
+        type: type,
+        x: (Math.random() - 0.5) * 5,
+        z: (Math.random() - 0.5) * 5,
+        rotation: 0,
+        emotion: 'neutral',
+        posture: 'standing'
+      });
 
-      if (currentRoomId && !isUpdatingFromRemote) {
-        await updateDoc(doc(db, "rooms", currentRoomId), {
-          avatars: arrayUnion({ id, x, z })
-        });
-      }
+      selectAvatar(newAvatar);
+      saveStateToFirebase();
     });
 
     // Limpiar Tablero
-    document.getElementById('clear-board').addEventListener('click', async () => {
+    document.getElementById('clear-board').addEventListener('click', () => {
       avatars.forEach(a => scene.remove(a));
       avatars.length = 0;
-
-      if (currentRoomId && !isUpdatingFromRemote) {
-        await setDoc(doc(db, "rooms", currentRoomId), { avatars: [] }, { merge: true });
-      }
+      deselectAvatar();
+      saveStateToFirebase();
     });
 
-    // Ajuste de Ventana
+    // Foto / Captura del Campo
+    document.getElementById('btn-screenshot').addEventListener('click', () => {
+      renderer.render(scene, camera);
+      const dataURL = renderer.domElement.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Constelacion_${currentRoomId || 'local'}.png`;
+      link.href = dataURL;
+      link.click();
+    });
+
+    // Resizing
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Animación Render
+    // Render loop
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
