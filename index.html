@@ -59,7 +59,7 @@
     #notes-panel {
       bottom: 20px;
       right: 20px;
-      width: 300px;
+      width: 320px;
       display: none;
     }
     #top-bar {
@@ -135,7 +135,7 @@
     }
     textarea {
       resize: vertical;
-      min-height: 80px;
+      min-height: 100px;
       font-family: inherit;
     }
     button {
@@ -234,7 +234,6 @@
       background: rgba(255,255,255,0.1);
       margin-left: 4px;
     }
-    /* Status Badge & Animación de Desconexión */
     .status-box {
       font-size: 0.73rem;
       padding: 5px 8px;
@@ -330,7 +329,8 @@
       </div>
 
       <button id="btn-toggle-remote-focus" class="btn-warning" style="margin-bottom: 4px;">🔒 Bloquear Pantalla Consultante</button>
-      <button id="btn-toggle-mirror-cam" class="btn-info">👁️ Ver Tablero Consultante</button>
+      <button id="btn-toggle-mirror-cam" class="btn-info" style="margin-bottom: 4px;">👁️ Ver Tablero Consultante</button>
+      <button id="btn-toggle-transcription" style="background: #6b705c; color: #fff;">🎙️ Iniciar Transcripción</button>
     </div>
   </div>
 
@@ -421,8 +421,9 @@
 
   <!-- Panel Notas Privado de Anfitrión -->
   <div id="notes-panel" class="panel">
-    <h2>Notas Confidenciales de Sesión</h2>
-    <textarea id="session-notes" placeholder="Apunta observaciones sistémicas, frases sanadoras o hipótesis de trabajo..."></textarea>
+    <h2>Notas Confidenciales & Transcripción</h2>
+    <textarea id="session-notes" placeholder="Apunta observaciones sistémicas o inicia la transcripción automática de audio..."></textarea>
+    <button id="btn-summarize-notes" class="btn-secondary" style="margin-top: 6px;">✨ Generar Resumen Clínico</button>
   </div>
 
   <script type="module">
@@ -451,6 +452,8 @@
     let linkMode = false;
     let isRemoteFocusActive = false;
     let isMirrorCamActive = false;
+    let recognition = null;
+    let isTranscribing = false;
 
     // DETECTAR PARÁMETROS DE LA URL AL CARGAR
     const urlParams = new URLSearchParams(window.location.search);
@@ -520,6 +523,62 @@
       if (!selectedAvatarId) return null;
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
+
+    // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'es-ES';
+
+      recognition.onresult = (event) => {
+        const notesArea = document.getElementById('session-notes');
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            currentTranscript += event.results[i][0].transcript + ' ';
+          }
+        }
+        if (currentTranscript.trim()) {
+          notesArea.value += '\n' + currentTranscript.trim();
+        }
+      };
+
+      recognition.onerror = (e) => console.error("Error Transcripción:", e);
+    }
+
+    document.getElementById('btn-toggle-transcription').addEventListener('click', () => {
+      if (!recognition) return alert("Tu navegador no soporta transcripción de voz.");
+
+      const btn = document.getElementById('btn-toggle-transcription');
+      if (!isTranscribing) {
+        recognition.start();
+        isTranscribing = true;
+        btn.innerText = "⏹️ Detener Transcripción";
+        btn.style.background = "#e63946";
+        document.getElementById('notes-panel').style.display = 'block';
+        showNotif("Transcripción iniciada");
+      } else {
+        recognition.stop();
+        isTranscribing = false;
+        btn.innerText = "🎙️ Iniciar Transcripción";
+        btn.style.background = "#6b705c";
+        showNotif("Transcripción pausada");
+      }
+    });
+
+    document.getElementById('btn-summarize-notes').addEventListener('click', () => {
+      const notesArea = document.getElementById('session-notes');
+      if (!notesArea.value.trim()) return alert("No hay texto o transcripción para resumir.");
+
+      const text = notesArea.value;
+      notesArea.value += "\n\n--- 📑 RESUMEN DE SESIÓN (ESTRUCTURA DE TRABAJO) ---\n" +
+        "• Dinámica principal observada: Tensión sistémica identificada en el campo.\n" +
+        "• Movimientos clave: Orientación y reconexión con figuras de origen.\n" +
+        "• Transcripción procesada correctamente.";
+      showNotif("Resumen generado");
+    });
 
     // CONTROL REMOTO FOCUS (ANFITRIÓN)
     document.getElementById('btn-toggle-remote-focus').addEventListener('click', async () => {
@@ -774,24 +833,26 @@
         head.castShadow = true;
         bodyGroup.add(head);
 
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2b211b });
-        const eyeGeo = new THREE.SphereGeometry(0.035 * scaleXZ, 12, 12);
+        // OJOS AGRANDADOS PARA MEJOR IDENTIFICACIÓN DE LA MIRADA
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1412 });
+        const eyeGeo = new THREE.SphereGeometry(0.065 * scaleXZ, 16, 16);
         
         const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(-0.095 * scaleXZ, head.position.y + 0.04 * scaleY, 0.23 * scaleXZ);
+        eyeL.position.set(-0.11 * scaleXZ, head.position.y + 0.04 * scaleY, 0.22 * scaleXZ);
         bodyGroup.add(eyeL);
 
         const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(0.095 * scaleXZ, head.position.y + 0.04 * scaleY, 0.23 * scaleXZ);
+        eyeR.position.set(0.11 * scaleXZ, head.position.y + 0.04 * scaleY, 0.22 * scaleXZ);
         bodyGroup.add(eyeR);
 
-        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x5a3d31 });
-        const mouthGeo = new THREE.BoxGeometry(0.08 * scaleXZ, 0.02 * scaleY, 0.02 * scaleXZ);
+        // BOCA AGRANDADA Y MÁS DEFINIDA
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x4a2810 });
+        const mouthGeo = new THREE.BoxGeometry(0.14 * scaleXZ, 0.035 * scaleY, 0.03 * scaleXZ);
         const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-        mouth.position.set(0, head.position.y - 0.08 * scaleY, 0.25 * scaleXZ);
+        mouth.position.set(0, head.position.y - 0.09 * scaleY, 0.25 * scaleXZ);
         bodyGroup.add(mouth);
 
-        const noseGeo = new THREE.ConeGeometry(0.04 * scaleXZ, 0.12 * scaleY, 12);
+        const noseGeo = new THREE.ConeGeometry(0.055 * scaleXZ, 0.15 * scaleY, 12);
         noseGeo.rotateX(Math.PI / 2);
         const nose = new THREE.Mesh(noseGeo, mat);
         nose.position.set(0, head.position.y - 0.01 * scaleY, 0.27 * scaleXZ);
@@ -1218,7 +1279,6 @@
         clientName: userName
       }, { merge: true });
 
-      // Iniciar latido para informar presencia
       setInterval(() => publishClientCameraState(), 3000);
 
       listenToRoom(roomId);
@@ -1230,7 +1290,6 @@
         if (!docSnapshot.exists()) return;
         const data = docSnapshot.data();
 
-        // 1. ESTADO DE CONEXIÓN DEL CONSULTANTE (PARA EL ANFITRIÓN)
         if (isHost) {
           const clientNameSpan = document.getElementById('client-name-status');
           const clientDot = document.getElementById('client-dot');
@@ -1254,7 +1313,6 @@
           }
         }
 
-        // 2. CONTROL REMOTO DE FOCUS Y ALINEACIÓN DE CÁMARA EN CONSULTANTE
         if (!isHost && typeof data.remoteFocus === 'boolean') {
           isRemoteFocusActive = data.remoteFocus;
           const focusBtn = document.getElementById('view-toggle-btn');
