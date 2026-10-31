@@ -62,6 +62,18 @@
       width: 340px;
       display: none;
     }
+    /* Modal de Historial de Salas */
+    #history-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 200;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      display: none;
+    }
     #top-bar {
       position: absolute;
       top: 14px;
@@ -133,7 +145,6 @@
       font-size: 0.82rem;
       outline: none;
     }
-    /* Estilos mejorados para la caja de texto y la barra de desplazamiento */
     textarea {
       resize: vertical;
       height: 140px;
@@ -292,6 +303,42 @@
     @keyframes blinker {
       50% { opacity: 0.2; }
     }
+
+    /* Estilos de la Lista del Historial */
+    .history-item {
+      background: rgba(39, 33, 30, 0.8);
+      border: 1px solid rgba(212, 163, 115, 0.2);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #e6ccb2;
+    }
+    .history-details {
+      font-size: 0.72rem;
+      color: #ddb892;
+      display: flex;
+      justify-content: space-between;
+    }
+    .history-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .history-actions button {
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      margin-top: 0;
+    }
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -335,6 +382,8 @@
     <div id="room-info">
       <span id="room-status-text">Estado: Modo local activo</span>
     </div>
+
+    <button id="btn-open-history" style="margin-top: 8px; background: #7f5539;">📜 Historial de Salas</button>
 
     <!-- Control Maestro del Creador -->
     <div id="host-controls" style="display: none; margin-top: 10px; border-top: 1px dashed rgba(212,163,115,0.3); padding-top: 8px;">
@@ -444,18 +493,30 @@
     
     <div class="btn-group" style="margin-top: 6px;">
       <button id="btn-summarize-notes" class="btn-secondary">✨ Resumen</button>
-      <button id="btn-copy-notes" class="btn-info">📋 Copiar</button>
+      <button id="btn-save-notes-firebase" class="btn-warning">☁️ Guardar Firebase</button>
     </div>
 
     <div class="btn-group" style="margin-top: 4px;">
-      <button id="btn-download-notes" style="background: #7f5539;">💾 Guardar TXT</button>
-      <button id="btn-clear-transcript" class="btn-danger">🗑️ Eliminar</button>
+      <button id="btn-copy-notes" class="btn-info">📋 Copiar</button>
+      <button id="btn-download-notes" style="background: #7f5539;">💾 TXT</button>
+      <button id="btn-clear-transcript" class="btn-danger">🗑️ Borrar</button>
+    </div>
+  </div>
+
+  <!-- Modal Historial de Salas -->
+  <div id="history-modal" class="panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h2>📜 Historial de Salas Creadas</h2>
+      <button id="btn-close-history" class="btn-danger" style="width: auto; padding: 2px 8px;">✕ Cerrar</button>
+    </div>
+    <div id="history-list-container">
+      <p style="font-size: 0.8rem; color: #8d99ae; text-align: center;">Cargando lista de salas...</p>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDocs, deleteDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -577,8 +638,6 @@
         }
 
         notesArea.value = baseNotesText + (interimTranscript ? '\n[...' + interimTranscript + ']' : '');
-        
-        // Auto-scroll al final del texto al transcribir
         notesArea.scrollTop = notesArea.scrollHeight;
       };
 
@@ -619,16 +678,139 @@
       }
     });
 
-    // FUNCIONES DE GUARDADO Y EXPORTACIÓN
+    // GUARDAR EN FIREBASE
+    async function saveNotesToFirebase() {
+      if (!currentRoomId) return alert("Debes crear o unirte a una sala primero.");
+      const notesArea = document.getElementById('session-notes');
+      
+      try {
+        const roomRef = doc(db, "rooms", currentRoomId);
+        await setDoc(roomRef, {
+          transcript: notesArea.value,
+          updatedAt: new Date()
+        }, { merge: true });
+        showNotif("Transcripción guardada en Firebase");
+      } catch (err) {
+        console.error("Error guardando en Firebase:", err);
+        showNotif("Error al guardar");
+      }
+    }
+
+    document.getElementById('btn-save-notes-firebase').addEventListener('click', saveNotesToFirebase);
+
+    // HISTORIAL Y GESTIÓN DE SALAS
+    document.getElementById('btn-open-history').addEventListener('click', loadRoomsHistory);
+    document.getElementById('btn-close-history').addEventListener('click', () => {
+      document.getElementById('history-modal').style.display = 'none';
+    });
+
+    async function loadRoomsHistory() {
+      const container = document.getElementById('history-list-container');
+      const modal = document.getElementById('history-modal');
+      modal.style.display = 'block';
+      container.innerHTML = '<p style="font-size: 0.8rem; color: #8d99ae; text-align: center;">Cargando salas...</p>';
+
+      try {
+        const querySnapshot = await getDocs(collection(db, "rooms"));
+        if (querySnapshot.empty) {
+          container.innerHTML = '<p style="font-size: 0.8rem; color: #8d99ae; text-align: center;">No hay salas registradas.</p>';
+          return;
+        }
+
+        let html = '';
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const roomId = docSnap.id;
+          
+          let dateStr = 'Fecha no disponible';
+          if (data.createdAt) {
+            const dateObj = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+            dateStr = dateObj.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+          }
+
+          const clientName = data.clientName || 'Sin registrar';
+          const hostName = data.createdBy || 'Anfitrión';
+          const hasTranscript = data.transcript && data.transcript.trim().length > 0;
+
+          html += `
+            <div class="history-item">
+              <div class="history-header">
+                <span>Sala: ${roomId}</span>
+                <span style="color: #2a9d8f;">${dateStr}</span>
+              </div>
+              <div class="history-details">
+                <span>Anfitrión: <b>${hostName}</b></span>
+                <span>Consultante: <b>${clientName}</b></span>
+              </div>
+              <div class="history-actions">
+                <button class="btn-info btn-load-notes" data-id="${roomId}">📂 Ver Notas</button>
+                <button class="btn-secondary btn-download-history" data-id="${roomId}" ${!hasTranscript ? 'disabled style="opacity:0.5;"' : ''}>💾 TXT</button>
+                <button class="btn-danger btn-delete-room" data-id="${roomId}">🗑️ Eliminar</button>
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+
+        // BIND EVENTOS A BOTONES DE LA LISTA
+        document.querySelectorAll('.btn-load-notes').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const roomId = e.target.getAttribute('data-id');
+            const roomSnap = await getDocs(collection(db, "rooms"));
+            roomSnap.forEach(d => {
+              if (d.id === roomId && d.data().transcript) {
+                document.getElementById('session-notes').value = d.data().transcript;
+                baseNotesText = d.data().transcript;
+                document.getElementById('notes-panel').style.display = 'block';
+                showNotif(`Notas de sala ${roomId} cargadas`);
+              }
+            });
+          });
+        });
+
+        document.querySelectorAll('.btn-download-history').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const roomId = e.target.getAttribute('data-id');
+            const roomSnap = await getDocs(collection(db, "rooms"));
+            roomSnap.forEach(d => {
+              if (d.id === roomId && d.data().transcript) {
+                const blob = new Blob([d.data().transcript], { type: 'text/plain;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `Transcripcion_Sala_${roomId}.txt`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+              }
+            });
+          });
+        });
+
+        document.querySelectorAll('.btn-delete-room').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const roomId = e.target.getAttribute('data-id');
+            if (confirm(`¿Confirmas eliminar la sala ${roomId} del historial?`)) {
+              await deleteDoc(doc(db, "rooms", roomId));
+              showNotif(`Sala ${roomId} eliminada`);
+              loadRoomsHistory();
+            }
+          });
+        });
+
+      } catch (err) {
+        console.error("Error cargando historial:", err);
+        container.innerHTML = '<p style="font-size: 0.8rem; color: #e63946; text-align: center;">Error al cargar las salas.</p>';
+      }
+    }
+
+    // FUNCIONES DE COPIAR Y DESCARGAR LOCAL
     document.getElementById('btn-copy-notes').addEventListener('click', () => {
       const notesArea = document.getElementById('session-notes');
       if (!notesArea.value.trim()) return alert("No hay texto para copiar.");
       
       navigator.clipboard.writeText(notesArea.value).then(() => {
         showNotif("Notas copiadas al portapapeles");
-      }).catch(err => {
-        console.error("Error al copiar:", err);
-      });
+      }).catch(err => console.error("Error al copiar:", err));
     });
 
     document.getElementById('btn-download-notes').addEventListener('click', () => {
