@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.2</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.3</title>
   <style>
     * {
       box-sizing: border-box;
@@ -393,7 +393,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v2.2</div>
+  <div class="version-tag">Lainez 3D Pro Suite v2.3</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
@@ -458,16 +458,26 @@
     <h2>Añadir Elemento al Campo</h2>
     <div class="input-group">
       <label>Nombre / Nombre del Familiar:</label>
-      <input type="text" id="avatar-label" placeholder="Ej. Madre, Padre, Síntoma">
+      <input type="text" id="avatar-label" placeholder="Ej. Madre, Tío, Síntoma">
     </div>
     <div class="input-group">
       <label>Tipo de Representante:</label>
       <select id="avatar-gender">
-        <optgroup label="Figuras Humanas">
-          <option value="adult-m">Hombre Adulto</option>
-          <option value="adult-f">Mujer Adulta</option>
-          <option value="child-m">Niño</option>
-          <option value="child-f">Niña</option>
+        <optgroup label="Hombres Adultos">
+          <option value="adult-m">Hombre Adulto (Modelo A - Estándar)</option>
+          <option value="adult-m2">Hombre Adulto (Modelo B - Robust/Alto)</option>
+        </optgroup>
+        <optgroup label="Mujeres Adultas">
+          <option value="adult-f">Mujer Adulta (Modelo A - Estándar)</option>
+          <option value="adult-f2">Mujer Adulta (Modelo B - Estilizada)</option>
+        </optgroup>
+        <optgroup label="Niños">
+          <option value="child-m">Niño (Modelo A - Menor)</option>
+          <option value="child-m2">Niño (Modelo B - Mayor)</option>
+        </optgroup>
+        <optgroup label="Niñas">
+          <option value="child-f">Niña (Modelo A - Menor)</option>
+          <option value="child-f2">Niña (Modelo B - Mayor)</option>
         </optgroup>
         <optgroup label="Recursos y Elementos Abstractos">
           <option value="symptom">El Síntoma / La Enfermedad</option>
@@ -623,7 +633,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v2.2)"))
+      .then(() => showNotif("Conectado a Backend (v2.3)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -705,7 +715,6 @@
           showNotif("Permiso de cámara denegado");
         }
       } else {
-        // APAGAR CÁMARA
         if (localStream) {
           localStream.getVideoTracks().forEach(track => {
             track.stop();
@@ -1176,10 +1185,9 @@
     fillLight.position.set(-10, 15, -10);
     scene.add(fillLight);
 
-    // TABLERO PRO SUITE - MADERA CON BISEL Y ANILLOS
+    // TABLERO PRO SUITE
     const boardGroup = new THREE.Group();
 
-    // 1. Cuerpo Principal con Madera Satinada
     const boardGeo = new THREE.CylinderGeometry(9, 9.2, 0.5, 64);
     const boardMat = new THREE.MeshStandardMaterial({ 
       color: 0x5c3a21, 
@@ -1191,7 +1199,6 @@
     mainBoard.receiveShadow = true;
     boardGroup.add(mainBoard);
 
-    // 2. Anillo Exterior Ornamental (Borde Cobre / Dorado)
     const ringGeo = new THREE.RingGeometry(8.7, 8.9, 64);
     ringGeo.rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({ 
@@ -1204,14 +1211,12 @@
     ringMesh.position.y = 0.01;
     boardGroup.add(ringMesh);
 
-    // 3. Anillo Intermedio Decorativo
     const midRingGeo = new THREE.RingGeometry(4.5, 4.6, 64);
     midRingGeo.rotateX(-Math.PI / 2);
     const midRingMesh = new THREE.Mesh(midRingGeo, ringMat);
     midRingMesh.position.y = 0.01;
     boardGroup.add(midRingMesh);
 
-    // 4. Punto Central de Anclaje
     const centerGeo = new THREE.RingGeometry(0, 0.4, 32);
     centerGeo.rotateX(-Math.PI / 2);
     const centerMesh = new THREE.Mesh(centerGeo, ringMat);
@@ -1250,11 +1255,12 @@
 
       let isChild = type.includes('child');
       let isFemale = type.includes('-f');
+      let isVariant2 = type.endsWith('2');
       let isAbstract = ['symptom', 'desire', 'secret', 'resource'].includes(type);
 
-      let scaleY = isChild ? 0.65 : 1.0;
-      let scaleXZ = isChild ? 0.75 : 1.0;
-      let baseColor = isFemale ? 0xddb892 : 0xd4a373;
+      let scaleY = isChild ? (isVariant2 ? 0.75 : 0.60) : (isVariant2 ? 1.08 : 1.0);
+      let scaleXZ = isChild ? (isVariant2 ? 0.80 : 0.70) : (isVariant2 ? (isFemale ? 0.90 : 1.15) : 1.0);
+      let baseColor = isFemale ? (isVariant2 ? 0xe0a98b : 0xddb892) : (isVariant2 ? 0xc89665 : 0xd4a373);
 
       if (type === 'symptom') baseColor = 0x9a031e;
       if (type === 'desire') baseColor = 0x2a9d8f;
@@ -1309,8 +1315,8 @@
         neck.position.y = (1.48 * scaleY);
         bodyGroup.add(neck);
 
-        const torsoTopWidth = isFemale ? 0.30 : 0.38;
-        const torsoBotWidth = isFemale ? 0.22 : 0.26;
+        const torsoTopWidth = isFemale ? (isVariant2 ? 0.28 : 0.30) : (isVariant2 ? 0.44 : 0.38);
+        const torsoBotWidth = isFemale ? (isVariant2 ? 0.24 : 0.22) : (isVariant2 ? 0.30 : 0.26);
         const torsoGeo = new THREE.CylinderGeometry(torsoTopWidth * scaleXZ, torsoBotWidth * scaleXZ, 0.55 * scaleY, 16);
         const torso = new THREE.Mesh(torsoGeo, mat);
         torso.position.y = (1.18 * scaleY);
