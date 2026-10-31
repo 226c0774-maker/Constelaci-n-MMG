@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.2</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.3</title>
   <style>
     * {
       box-sizing: border-box;
@@ -73,19 +73,23 @@
       max-height: 80vh;
       display: none;
     }
+
+    /* BARRA SUPERIOR CENTRADA */
     #top-bar {
       position: absolute;
       top: 14px;
-      left: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 100;
       display: flex;
       gap: 8px;
+      align-items: center;
     }
     .top-btn {
       background: rgba(28, 24, 22, 0.88);
       border: 1px solid rgba(212, 163, 115, 0.4);
       color: #e6ccb2;
-      padding: 5px 12px;
+      padding: 6px 14px;
       border-radius: 16px;
       font-size: 0.78rem;
       font-weight: 600;
@@ -128,27 +132,18 @@
       pointer-events: none;
     }
 
-    /* POSICIONAMIENTO DE CÁMARAS A LA MISMA ALTURA QUE TOP-BAR */
-    #video-container {
+    /* UBICACIÓN DE VENTANAS FLOTANTES FLANQUEANDO EL MENÚ CENTRAL */
+    .video-box {
       position: absolute;
       top: 14px;
-      right: 20px;
-      z-index: 15;
-      display: flex;
-      flex-direction: row;
-      gap: 8px;
-      pointer-events: none;
-    }
-    .video-box {
       width: 120px;
       height: 90px;
       background: rgba(28, 24, 22, 0.9);
       border: 1px solid rgba(212, 163, 115, 0.4);
       border-radius: 10px;
       overflow: hidden;
-      position: relative;
+      z-index: 95;
       box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-      pointer-events: auto;
       backdrop-filter: blur(8px);
     }
     .video-box video {
@@ -168,8 +163,16 @@
       padding: 1px 5px;
       border-radius: 4px;
     }
+
+    /* CÁMARA LOCAL (TÚ) A LA IZQUIERDA DE FOCUS */
     #local-video-box {
+      right: calc(50% + 225px);
       border-color: rgba(88, 129, 87, 0.6);
+    }
+
+    /* CÁMARA REMOTA (PARTICIPANTE) A LA DERECHA DE CONECTAR CÁMARA */
+    #remote-video-box {
+      left: calc(50% + 225px);
     }
 
     h2, h3 {
@@ -399,29 +402,30 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.2</div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.3</div>
   
+  <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
     <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
     <button id="video-toggle-btn" class="top-btn">📹 Conectar Cámara</button>
   </div>
 
+  <!-- VENTANA "TÚ" A LA IZQUIERDA DE FOCUS -->
+  <div id="local-video-box" class="video-box" style="display: none;">
+    <video id="local-video" autoplay playsinline muted></video>
+    <span class="video-label">Tú</span>
+  </div>
+
+  <!-- VENTANA "PARTICIPANTE" A LA DERECHA DE CONECTAR CÁMARA -->
+  <div id="remote-video-box" class="video-box" style="display: none;">
+    <video id="remote-video" autoplay playsinline></video>
+    <span id="remote-video-label" class="video-label">Participante</span>
+  </div>
+
   <div id="notification">Notificación</div>
 
   <audio id="remote-audio" autoplay></audio>
-
-  <!-- Ventanas Flotantes de Video alineadas a la altura superior -->
-  <div id="video-container" style="display: none;">
-    <div id="remote-video-box" class="video-box">
-      <video id="remote-video" autoplay playsinline></video>
-      <span id="remote-video-label" class="video-label">Participante</span>
-    </div>
-    <div id="local-video-box" class="video-box">
-      <video id="local-video" autoplay playsinline muted></video>
-      <span class="video-label">Tú</span>
-    </div>
-  </div>
 
   <!-- Panel Sincronización -->
   <div id="sync-panel" class="panel">
@@ -431,7 +435,6 @@
       <input type="text" id="user-name" placeholder="Ej. Consultante">
     </div>
 
-    <!-- Sección de Creación / Unirse -->
     <div id="host-create-section">
       <button id="btn-create-room" class="btn-secondary">Crear Nueva Sala (Anfitrión)</button>
     </div>
@@ -449,14 +452,11 @@
       <span id="room-status-text">Estado: Modo local activo</span>
     </div>
 
-    <!-- Oculto por defecto para consultantes -->
     <button id="btn-open-history" style="margin-top: 8px; background: #7f5539; display: none;">📜 Historial de Salas</button>
 
-    <!-- Control Maestro del Creador -->
     <div id="host-controls" style="display: none; margin-top: 10px; border-top: 1px dashed rgba(212,163,115,0.3); padding-top: 8px;">
       <label style="font-size: 0.7rem; color: #e9c46a;">CONTROL MAESTRO ANFITRIÓN:</label>
       
-      <!-- Estado de conexión del Consultante -->
       <div class="status-box" style="margin-top: 4px;">
         <span id="client-name-status">Consultante: Ausente</span>
         <span id="client-dot" class="dot-offline"></span>
@@ -638,7 +638,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.2)"))
+      .then(() => showNotif("Conectado a Backend (v1.3)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -669,12 +669,12 @@
 
         document.getElementById('join-section').style.display = 'none';
         document.getElementById('host-controls').style.display = 'block';
-        btnHistory.style.display = 'block'; // Mostrar Historial solo al Anfitrión
+        btnHistory.style.display = 'block';
       } else {
         roomInfo.innerHTML = `<div>Conectado a Sala: <b>${roomId}</b></div>`;
         document.getElementById('host-controls').style.display = 'none';
         document.getElementById('btn-notes-toggle').style.display = 'none';
-        btnHistory.style.display = 'none'; // Asegurar que permanezca oculto al Consultante
+        btnHistory.style.display = 'none';
       }
     }
 
@@ -686,7 +686,7 @@
     // CONTROL DE CÁMARA Y VIDEO WEBRTC
     async function toggleVideoConnection() {
       const videoBtn = document.getElementById('video-toggle-btn');
-      const videoContainer = document.getElementById('video-container');
+      const localBox = document.getElementById('local-video-box');
 
       if (!currentRoomId) {
         return alert("Primero debes crear o unirte a una sala para activar la cámara.");
@@ -702,7 +702,7 @@
           }
 
           document.getElementById('local-video').srcObject = localStream;
-          videoContainer.style.display = 'flex';
+          localBox.style.display = 'block';
           isVideoConnected = true;
 
           videoBtn.innerText = "📷 Apagar Cam";
@@ -1083,14 +1083,14 @@
       peerConnection.ontrack = event => {
         const remoteAudio = document.getElementById('remote-audio');
         const remoteVideo = document.getElementById('remote-video');
-        const videoContainer = document.getElementById('video-container');
+        const remoteBox = document.getElementById('remote-video-box');
 
         if (event.track.kind === 'audio') {
           remoteAudio.srcObject = event.streams[0];
         }
         if (event.track.kind === 'video') {
           remoteVideo.srcObject = event.streams[0];
-          videoContainer.style.display = 'flex';
+          remoteBox.style.display = 'block';
         }
       };
 
@@ -1439,7 +1439,7 @@
     let dragTarget = null;
 
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.panel') || e.target.closest('#top-bar') || e.target.closest('#video-container')) return;
+      if (e.target.closest('.panel') || e.target.closest('#top-bar') || e.target.closest('.video-box')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
