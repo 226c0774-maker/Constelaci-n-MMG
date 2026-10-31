@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.1</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.2</title>
   <style>
     * {
       box-sizing: border-box;
@@ -76,8 +76,7 @@
     #top-bar {
       position: absolute;
       top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
+      left: 20px;
       z-index: 100;
       display: flex;
       gap: 8px;
@@ -129,20 +128,20 @@
       pointer-events: none;
     }
 
-    /* ESTILOS DE VENTANAS FLOTANTES DE VIDEO */
+    /* POSICIONAMIENTO DE CÁMARAS A LA MISMA ALTURA QUE TOP-BAR */
     #video-container {
       position: absolute;
-      top: 70px;
+      top: 14px;
       right: 20px;
       z-index: 15;
       display: flex;
-      flex-direction: column;
-      gap: 10px;
+      flex-direction: row;
+      gap: 8px;
       pointer-events: none;
     }
     .video-box {
-      width: 180px;
-      height: 135px;
+      width: 120px;
+      height: 90px;
       background: rgba(28, 24, 22, 0.9);
       border: 1px solid rgba(212, 163, 115, 0.4);
       border-radius: 10px;
@@ -151,7 +150,6 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.6);
       pointer-events: auto;
       backdrop-filter: blur(8px);
-      transition: transform 0.3s ease;
     }
     .video-box video {
       width: 100%;
@@ -163,17 +161,14 @@
       position: absolute;
       bottom: 4px;
       left: 6px;
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       font-weight: 600;
       color: #f5efe6;
-      background: rgba(0,0,0,0.6);
-      padding: 2px 6px;
+      background: rgba(0,0,0,0.65);
+      padding: 1px 5px;
       border-radius: 4px;
     }
     #local-video-box {
-      width: 110px;
-      height: 82px;
-      align-self: flex-end;
       border-color: rgba(88, 129, 87, 0.6);
     }
 
@@ -404,7 +399,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.1</div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.2</div>
   
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
@@ -416,7 +411,7 @@
 
   <audio id="remote-audio" autoplay></audio>
 
-  <!-- Ventanas Flotantes de Video -->
+  <!-- Ventanas Flotantes de Video alineadas a la altura superior -->
   <div id="video-container" style="display: none;">
     <div id="remote-video-box" class="video-box">
       <video id="remote-video" autoplay playsinline></video>
@@ -454,7 +449,8 @@
       <span id="room-status-text">Estado: Modo local activo</span>
     </div>
 
-    <button id="btn-open-history" style="margin-top: 8px; background: #7f5539;">📜 Historial de Salas</button>
+    <!-- Oculto por defecto para consultantes -->
+    <button id="btn-open-history" style="margin-top: 8px; background: #7f5539; display: none;">📜 Historial de Salas</button>
 
     <!-- Control Maestro del Creador -->
     <div id="host-controls" style="display: none; margin-top: 10px; border-top: 1px dashed rgba(212,163,115,0.3); padding-top: 8px;">
@@ -642,7 +638,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.1)"))
+      .then(() => showNotif("Conectado a Backend (v1.2)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -654,6 +650,7 @@
 
     function updateRoomInfoUI(roomId) {
       const roomInfo = document.getElementById('room-info');
+      const btnHistory = document.getElementById('btn-open-history');
       
       if (isHost) {
         roomInfo.innerHTML = `
@@ -672,10 +669,12 @@
 
         document.getElementById('join-section').style.display = 'none';
         document.getElementById('host-controls').style.display = 'block';
+        btnHistory.style.display = 'block'; // Mostrar Historial solo al Anfitrión
       } else {
         roomInfo.innerHTML = `<div>Conectado a Sala: <b>${roomId}</b></div>`;
         document.getElementById('host-controls').style.display = 'none';
         document.getElementById('btn-notes-toggle').style.display = 'none';
+        btnHistory.style.display = 'none'; // Asegurar que permanezca oculto al Consultante
       }
     }
 
