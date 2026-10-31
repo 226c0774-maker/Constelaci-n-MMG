@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.0</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.1</title>
   <style>
     * {
       box-sizing: border-box;
@@ -103,12 +103,12 @@
       background: rgba(212, 163, 115, 0.25);
       color: #fff;
     }
-    .top-btn.active-audio {
+    .top-btn.active-audio, .top-btn.active-video {
       background: #588157;
       color: #fff;
       border-color: #a3b18a;
     }
-    .top-btn.muted-audio {
+    .top-btn.muted-audio, .top-btn.stopped-video {
       background: #9a031e;
       color: #fff;
       border-color: #e63946;
@@ -393,7 +393,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v2.0</div>
+  <div class="version-tag">Lainez 3D Pro Suite v2.1</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
@@ -613,6 +613,7 @@
     let peerConnection = null;
     let isAudioConnected = false;
     let isMuted = false;
+    let isCameraActive = false;
 
     const rtcServers = {
       iceServers: [
@@ -622,7 +623,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v2.0)"))
+      .then(() => showNotif("Conectado a Backend (v2.1)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -667,31 +668,56 @@
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
 
-    // TRANSMISIÓN DE CÁMARA Y RECEPCIÓN
+    // TRANSMISIÓN DE CÁMARA (ENCENDIDO / APAGADO)
     document.getElementById('video-toggle-btn').addEventListener('click', async () => {
       if (!currentRoomId) return alert("Primero debes crear o unirte a una sala.");
 
+      const videoBtn = document.getElementById('video-toggle-btn');
       const remoteBox = document.getElementById('remote-video-box');
-      const remoteVideo = document.getElementById('remote-video');
 
-      try {
-        if (!localStream) {
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      if (!isCameraActive) {
+        try {
+          if (!localStream) {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+          } else {
+            const videoTracks = localStream.getVideoTracks();
+            if (videoTracks.length === 0) {
+              const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              localStream.addTrack(newStream.getVideoTracks()[0]);
+            }
+          }
+          
+          if (!peerConnection) {
+            setupWebRTCConnection();
+          } else {
+            localStream.getVideoTracks().forEach(track => {
+              peerConnection.addTrack(track, localStream);
+            });
+          }
+
+          isCameraActive = true;
+          videoBtn.innerText = "📹 Desconectar Cámara";
+          videoBtn.classList.add('stopped-video');
+          remoteBox.style.display = 'block';
+          showNotif("Cámara encendida");
+        } catch (err) {
+          console.error("Error al acceder a la cámara:", err);
+          showNotif("Permiso de cámara denegado");
         }
-        
-        if (!peerConnection) {
-          setupWebRTCConnection();
-        } else {
-          localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
+      } else {
+        // APAGAR CÁMARA
+        if (localStream) {
+          localStream.getVideoTracks().forEach(track => {
+            track.stop();
+            localStream.removeTrack(track);
           });
         }
-
-        remoteBox.style.display = 'block';
-        showNotif("Sintonizando participante...");
-      } catch (err) {
-        console.error("Error al acceder a la cámara:", err);
-        showNotif("Permiso de cámara denegado");
+        
+        isCameraActive = false;
+        videoBtn.innerText = "📹 Ver Participante";
+        videoBtn.classList.remove('stopped-video');
+        remoteBox.style.display = 'none';
+        showNotif("Cámara apagada");
       }
     });
 
@@ -1000,7 +1026,7 @@
       if (!isAudioConnected) {
         try {
           if (!localStream) {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           }
           isAudioConnected = true;
           audioBtn.innerText = "🎙️ Micrófono Activo";
