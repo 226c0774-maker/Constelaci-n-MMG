@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.3</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.4</title>
   <style>
     * {
       box-sizing: border-box;
@@ -132,7 +132,7 @@
       pointer-events: none;
     }
 
-    /* UBICACIÓN DE VENTANAS FLOTANTES FLANQUEANDO EL MENÚ CENTRAL */
+    /* UBICACIÓN DE VENTANAS FLOTANTES A LOS LADOS DEL MENÚ CENTRAL */
     .video-box {
       position: absolute;
       top: 14px;
@@ -164,13 +164,13 @@
       border-radius: 4px;
     }
 
-    /* CÁMARA LOCAL (TÚ) A LA IZQUIERDA DE FOCUS */
+    /* CÁMARA LOCAL ("TÚ") A LA IZQUIERDA DE FOCUS */
     #local-video-box {
       right: calc(50% + 225px);
       border-color: rgba(88, 129, 87, 0.6);
     }
 
-    /* CÁMARA REMOTA (PARTICIPANTE) A LA DERECHA DE CONECTAR CÁMARA */
+    /* CÁMARA REMOTA ("PARTICIPANTE") A LA DERECHA DE CONECTAR CÁMARA */
     #remote-video-box {
       left: calc(50% + 225px);
     }
@@ -402,7 +402,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.3</div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.4</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
@@ -638,7 +638,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.3)"))
+      .then(() => showNotif("Conectado a Backend (v1.4)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -1076,9 +1076,11 @@
     async function setupWebRTCConnection() {
       peerConnection = new RTCPeerConnection(rtcServers);
 
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-      });
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+      }
 
       peerConnection.ontrack = event => {
         const remoteAudio = document.getElementById('remote-audio');
@@ -1090,7 +1092,7 @@
         }
         if (event.track.kind === 'video') {
           remoteVideo.srcObject = event.streams[0];
-          remoteBox.style.display = 'block';
+          remoteBox.style.display = 'block'; // Activa visibilidad en pantalla del Anfitrión/Consultante
         }
       };
 
@@ -1274,7 +1276,6 @@
         bodyGroup.add(hip);
 
         const legGeo = new THREE.CylinderGeometry(0.08 * scaleXZ, 0.06 * scaleXZ, 0.65 * scaleY, 12);
-        const legL = new THREE.Mesh(legGeo, mat);
         legL.position.set(-0.11 * scaleXZ, 0.325 * scaleY, 0);
         legL.castShadow = true;
         bodyGroup.add(legL);
