@@ -99,7 +99,6 @@
       color: #fff;
       border-color: #e63946;
     }
-    /* Estilo inactivo para cuando el consultante está siendo guiado */
     .top-btn.disabled-btn {
       pointer-events: none;
       opacity: 0.7;
@@ -449,14 +448,21 @@
 
       isRemoteFocusActive = !isRemoteFocusActive;
       const roomRef = doc(db, "rooms", currentRoomId);
-      await setDoc(roomRef, { remoteFocus: isRemoteFocusActive }, { merge: true });
+      
+      const payload = { remoteFocus: isRemoteFocusActive };
+      if (isRemoteFocusActive) {
+        payload.cameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+        payload.cameraTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
+      }
+
+      await setDoc(roomRef, payload, { merge: true });
 
       const btn = document.getElementById('btn-toggle-remote-focus');
       if (isRemoteFocusActive) {
         btn.innerText = "🔓 Desbloquear Pantalla Consultante";
         btn.classList.remove('btn-warning');
         btn.classList.add('btn-secondary');
-        showNotif("Pantalla del consultante bloqueada en Focus");
+        showNotif("Pantalla y vista del consultante alineadas");
       } else {
         btn.innerText = "🔒 Bloquear Pantalla Consultante";
         btn.classList.remove('btn-secondary');
@@ -1013,7 +1019,6 @@
 
     let uiVisible = true;
     document.getElementById('view-toggle-btn').addEventListener('click', () => {
-      // Ignorar clics si el consultante está en modo guiado por el terapeuta
       if (!isHost && isRemoteFocusActive) return;
 
       uiVisible = !uiVisible;
@@ -1089,7 +1094,7 @@
         if (!docSnapshot.exists()) return;
         const data = docSnapshot.data();
 
-        // CONTROL REMOTO DE PANTALLA Y BOTÓN FOCUS EN CONSULTANTE
+        // CONTROL REMOTO DE FOCUS Y ALINEACIÓN DE CÁMARA EN CONSULTANTE
         if (!isHost && typeof data.remoteFocus === 'boolean') {
           isRemoteFocusActive = data.remoteFocus;
           const focusBtn = document.getElementById('view-toggle-btn');
@@ -1099,6 +1104,13 @@
             focusBtn.innerText = '🔒 Guiado por Terapeuta';
             focusBtn.classList.add('disabled-btn');
             deselectAvatar();
+
+            // Sincronización exacta de cámara hacia la posición del Anfitrión
+            if (data.cameraPos && data.cameraTarget) {
+              camera.position.set(data.cameraPos.x, data.cameraPos.y, data.cameraPos.z);
+              controls.target.set(data.cameraTarget.x, data.cameraTarget.y, data.cameraTarget.z);
+              controls.update();
+            }
           } else {
             document.querySelectorAll('.panel').forEach(p => p.style.opacity = uiVisible ? '1' : '0');
             focusBtn.innerText = uiVisible ? '👁️ Focus' : '👁️ Mostrar Controles';
