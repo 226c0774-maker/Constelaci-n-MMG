@@ -250,17 +250,20 @@
     <h2>Sincronización en Vivo</h2>
     <div class="input-group">
       <label for="user-name">Tu Nombre / Rol:</label>
-      <input type="text" id="user-name" placeholder="Ej. Terapeuta">
+      <input type="text" id="user-name" placeholder="Ej. Consultante">
     </div>
-    <button id="btn-create-room" class="btn-secondary">Crear Nueva Sala</button>
 
-    <div style="margin: 8px 0; text-align: center; font-size: 0.72rem; color: #ddb892;">— O ÚNETE A UNA —</div>
+    <!-- Sección exclusiva de Creación (Se oculta si es consultante) -->
+    <div id="host-create-section">
+      <button id="btn-create-room" class="btn-secondary">Crear Nueva Sala (Anfitrión)</button>
+      <div style="margin: 8px 0; text-align: center; font-size: 0.72rem; color: #ddb892;">— O ÚNETE A UNA —</div>
+    </div>
 
     <div class="input-group">
       <label for="room-code-input">Código de Sala:</label>
       <input type="text" id="room-code-input" placeholder="Ej. X8A2K9">
     </div>
-    <button id="btn-join-room">Unirse a Sala</button>
+    <button id="btn-join-room">Unirse a la Sala</button>
 
     <div id="room-info">
       <span id="room-status-text">Estado: Modo local activo</span>
@@ -390,6 +393,19 @@
     let linkMode = false;
     let isRemoteFocusActive = false;
 
+    // DETECTAR PARÁMETROS DE LA URL AL CARGAR
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRoom = urlParams.get('room');
+    const urlRole = urlParams.get('role');
+
+    if (urlRoom) {
+      document.getElementById('room-code-input').value = urlRoom.toUpperCase();
+      if (urlRole === 'client') {
+        document.getElementById('host-create-section').style.display = 'none';
+        document.getElementById('user-name').placeholder = "Ej. Consultante";
+      }
+    }
+
     // AUDIO WEBRTC
     let localStream = null;
     let peerConnection = null;
@@ -418,14 +434,16 @@
       const roomInfo = document.getElementById('room-info');
       roomInfo.innerHTML = `
         <div>Sala Activa: <b id="current-room-code">${roomId}</b></div>
-        <button id="btn-copy-code" class="btn-copy">📋 Copiar Código</button>
+        <button id="btn-copy-code" class="btn-copy">🔗 Copiar Enlace Directo</button>
       `;
 
       document.getElementById('btn-copy-code').addEventListener('click', () => {
-        navigator.clipboard.writeText(roomId).then(() => {
-          showNotif("Código copiado al portapapeles");
+        // Generar URL completa para compartir
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}&role=client`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showNotif("Enlace de acceso copiado al portapapeles");
         }).catch(err => {
-          console.error("Error copiando código:", err);
+          console.error("Error copiando enlace:", err);
         });
       });
 
@@ -1105,7 +1123,6 @@
             focusBtn.classList.add('disabled-btn');
             deselectAvatar();
 
-            // Sincronización exacta de cámara hacia la posición del Anfitrión
             if (data.cameraPos && data.cameraTarget) {
               camera.position.set(data.cameraPos.x, data.cameraPos.y, data.cameraPos.z);
               controls.target.set(data.cameraTarget.x, data.cameraTarget.y, data.cameraTarget.z);
