@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.4</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.5</title>
   <style>
     * {
       box-sizing: border-box;
@@ -132,13 +132,13 @@
       pointer-events: none;
     }
 
-    /* UBICACIÓN DE VENTANAS FLOTANTES A LOS LADOS DEL MENÚ CENTRAL */
+    /* UBICACIÓN DE LAS VENTANAS DE CÁMARA FLANQUEANDO EL MENÚ CENTRAL */
     .video-box {
       position: absolute;
       top: 14px;
-      width: 120px;
-      height: 90px;
-      background: rgba(28, 24, 22, 0.9);
+      width: 130px;
+      height: 95px;
+      background: rgba(28, 24, 22, 0.95);
       border: 1px solid rgba(212, 163, 115, 0.4);
       border-radius: 10px;
       overflow: hidden;
@@ -159,20 +159,21 @@
       font-size: 0.62rem;
       font-weight: 600;
       color: #f5efe6;
-      background: rgba(0,0,0,0.65);
-      padding: 1px 5px;
+      background: rgba(0,0,0,0.7);
+      padding: 1px 6px;
       border-radius: 4px;
     }
 
-    /* CÁMARA LOCAL ("TÚ") A LA IZQUIERDA DE FOCUS */
+    /* VENTANA LOCAL ("TÚ") A LA IZQUIERDA DE FOCUS */
     #local-video-box {
       right: calc(50% + 225px);
       border-color: rgba(88, 129, 87, 0.6);
     }
 
-    /* CÁMARA REMOTA ("PARTICIPANTE") A LA DERECHA DE CONECTAR CÁMARA */
+    /* VENTANA REMOTA ("PARTICIPANTE / OTRO") A LA DERECHA DE CONECTAR CÁMARA */
     #remote-video-box {
       left: calc(50% + 225px);
+      border-color: rgba(69, 123, 157, 0.6);
     }
 
     h2, h3 {
@@ -402,7 +403,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.4</div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.5</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
@@ -419,7 +420,7 @@
 
   <!-- VENTANA "PARTICIPANTE" A LA DERECHA DE CONECTAR CÁMARA -->
   <div id="remote-video-box" class="video-box" style="display: none;">
-    <video id="remote-video" autoplay playsinline></video>
+    <video id="remote-video" autoplay playsinline muted></video>
     <span id="remote-video-label" class="video-label">Participante</span>
   </div>
 
@@ -623,8 +624,9 @@
       }
     }
 
-    // AUDIO & VIDEO WEBRTC EN TIEMPO REAL
+    // WEBRTC EN TIEMPO REAL
     let localStream = null;
+    let remoteStream = new MediaStream();
     let peerConnection = null;
     let isAudioConnected = false;
     let isVideoConnected = false;
@@ -638,7 +640,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.4)"))
+      .then(() => showNotif("Conectado a Backend (v1.5)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -683,7 +685,7 @@
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
 
-    // CONTROL DE CÁMARA Y VIDEO WEBRTC
+    // CÁMARA Y VIDEO WEBRTC BIDIRECCIONAL
     async function toggleVideoConnection() {
       const videoBtn = document.getElementById('video-toggle-btn');
       const localBox = document.getElementById('local-video-box');
@@ -707,7 +709,7 @@
 
           videoBtn.innerText = "📷 Apagar Cam";
           videoBtn.classList.add('active-audio');
-          showNotif("Cámara conectada");
+          showNotif("Tu cámara está activa");
 
           if (!peerConnection) {
             setupWebRTCConnection();
@@ -739,7 +741,7 @@
 
     document.getElementById('video-toggle-btn').addEventListener('click', toggleVideoConnection);
 
-    // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO
+    // TRANSCRIPCIÓN EN VIVO
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
@@ -1087,12 +1089,18 @@
         const remoteVideo = document.getElementById('remote-video');
         const remoteBox = document.getElementById('remote-video-box');
 
+        event.streams[0].getTracks().forEach(track => {
+          remoteStream.addTrack(track);
+        });
+
         if (event.track.kind === 'audio') {
-          remoteAudio.srcObject = event.streams[0];
+          remoteAudio.srcObject = remoteStream;
         }
         if (event.track.kind === 'video') {
-          remoteVideo.srcObject = event.streams[0];
-          remoteBox.style.display = 'block'; // Activa visibilidad en pantalla del Anfitrión/Consultante
+          remoteVideo.srcObject = remoteStream;
+          remoteBox.style.display = 'block';
+          remoteVideo.play().catch(e => console.log("Autoplay video permitido"));
+          showNotif("Cámara del participante recibida");
         }
       };
 
@@ -1102,32 +1110,52 @@
 
       peerConnection.onicecandidate = event => {
         if (event.candidate) {
-          addDoc(callerCandidates, event.candidate.toJSON());
+          const targetCol = isHost ? callerCandidates : calleeCandidates;
+          addDoc(targetCol, event.candidate.toJSON());
         }
       };
 
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
+      if (isHost) {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        await setDoc(roomRef, { offer: { type: offer.type, sdp: offer.sdp } }, { merge: true });
 
-      const roomWithOffer = { offer: { type: offer.type, sdp: offer.sdp } };
-      await setDoc(roomRef, roomWithOffer, { merge: true });
-
-      onSnapshot(roomRef, async snapshot => {
-        const data = snapshot.data();
-        if (peerConnection && !peerConnection.currentRemoteDescription && data && data.answer) {
-          const answer = new RTCSessionDescription(data.answer);
-          await peerConnection.setRemoteDescription(answer);
-        }
-      });
-
-      onSnapshot(calleeCandidates, snapshot => {
-        snapshot.docChanges().forEach(async change => {
-          if (change.type === 'added') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            await peerConnection.addIceCandidate(candidate);
+        onSnapshot(roomRef, async snapshot => {
+          const data = snapshot.data();
+          if (peerConnection && !peerConnection.currentRemoteDescription && data && data.answer) {
+            const answer = new RTCSessionDescription(data.answer);
+            await peerConnection.setRemoteDescription(answer);
           }
         });
-      });
+
+        onSnapshot(calleeCandidates, snapshot => {
+          snapshot.docChanges().forEach(async change => {
+            if (change.type === 'added') {
+              const candidate = new RTCIceCandidate(change.doc.data());
+              await peerConnection.addIceCandidate(candidate);
+            }
+          });
+        });
+      } else {
+        onSnapshot(roomRef, async snapshot => {
+          const data = snapshot.data();
+          if (peerConnection && !peerConnection.currentRemoteDescription && data && data.offer) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            await setDoc(roomRef, { answer: { type: answer.type, sdp: answer.sdp } }, { merge: true });
+          }
+        });
+
+        onSnapshot(callerCandidates, snapshot => {
+          snapshot.docChanges().forEach(async change => {
+            if (change.type === 'added') {
+              const candidate = new RTCIceCandidate(change.doc.data());
+              await peerConnection.addIceCandidate(candidate);
+            }
+          });
+        });
+      }
     }
 
     document.getElementById('audio-toggle-btn').addEventListener('click', toggleAudioConnection);
@@ -1276,6 +1304,7 @@
         bodyGroup.add(hip);
 
         const legGeo = new THREE.CylinderGeometry(0.08 * scaleXZ, 0.06 * scaleXZ, 0.65 * scaleY, 12);
+        const legL = new THREE.Mesh(legGeo, mat);
         legL.position.set(-0.11 * scaleXZ, 0.325 * scaleY, 0);
         legL.castShadow = true;
         bodyGroup.add(legL);
@@ -1654,6 +1683,7 @@
         updateRoomInfoUI(roomId);
         showNotif(`Sala ${roomId} Creada (Modo Anfitrión)`);
         listenToRoom(roomId);
+        setupWebRTCConnection();
       } catch (e) {
         console.error("Error al crear sala:", e);
         showNotif("Error backend");
@@ -1679,6 +1709,7 @@
       setInterval(() => publishClientCameraState(), 3000);
 
       listenToRoom(roomId);
+      setupWebRTCConnection();
       showNotif(`Unido a ${roomId} (Modo Consultante)`);
     });
 
