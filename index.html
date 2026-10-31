@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.7</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.0</title>
   <style>
     * {
       box-sizing: border-box;
@@ -130,6 +130,40 @@
       font-weight: 600;
       letter-spacing: 0.5px;
       pointer-events: none;
+    }
+
+    /* VENTANA ÚNICA DE VIDEO DEL OTRO PARTICIPANTE */
+    #remote-video-box {
+      position: absolute;
+      top: 14px;
+      right: 360px;
+      width: 140px;
+      height: 105px;
+      background: rgba(28, 24, 22, 0.95);
+      border: 1px solid rgba(69, 123, 157, 0.6);
+      border-radius: 10px;
+      overflow: hidden;
+      z-index: 95;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      display: none;
+    }
+    #remote-video-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #110d0c;
+    }
+    .video-label {
+      position: absolute;
+      bottom: 4px;
+      left: 6px;
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: #f5efe6;
+      background: rgba(0,0,0,0.7);
+      padding: 1px 6px;
+      border-radius: 4px;
     }
 
     h2, h3 {
@@ -359,12 +393,19 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.7</div>
+  <div class="version-tag">Lainez 3D Pro Suite v2.0</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
     <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
+    <button id="video-toggle-btn" class="top-btn">📹 Ver Participante</button>
+  </div>
+
+  <!-- VENTANA ÚNICA DEL OTRO PARTICIPANTE -->
+  <div id="remote-video-box">
+    <video id="remote-video" autoplay playsinline></video>
+    <span id="remote-video-label" class="video-label">Participante</span>
   </div>
 
   <div id="notification">Notificación</div>
@@ -567,7 +608,7 @@
       }
     }
 
-    // AUDIO WEBRTC
+    // WEBRTC BIDIRECCIONAL RECEPTOR
     let localStream = null;
     let peerConnection = null;
     let isAudioConnected = false;
@@ -581,7 +622,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.7)"))
+      .then(() => showNotif("Conectado a Backend (v2.0)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -625,6 +666,34 @@
       if (!selectedAvatarId) return null;
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
+
+    // TRANSMISIÓN DE CÁMARA Y RECEPCIÓN
+    document.getElementById('video-toggle-btn').addEventListener('click', async () => {
+      if (!currentRoomId) return alert("Primero debes crear o unirte a una sala.");
+
+      const remoteBox = document.getElementById('remote-video-box');
+      const remoteVideo = document.getElementById('remote-video');
+
+      try {
+        if (!localStream) {
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        }
+        
+        if (!peerConnection) {
+          setupWebRTCConnection();
+        } else {
+          localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+          });
+        }
+
+        remoteBox.style.display = 'block';
+        showNotif("Sintonizando participante...");
+      } catch (err) {
+        console.error("Error al acceder a la cámara:", err);
+        showNotif("Permiso de cámara denegado");
+      }
+    });
 
     // TRANSCRIPCIÓN EN VIVO
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -931,7 +1000,7 @@
       if (!isAudioConnected) {
         try {
           if (!localStream) {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
           }
           isAudioConnected = true;
           audioBtn.innerText = "🎙️ Micrófono Activo";
@@ -971,8 +1040,18 @@
 
       peerConnection.ontrack = event => {
         const remoteAudio = document.getElementById('remote-audio');
+        const remoteVideo = document.getElementById('remote-video');
+        const remoteBox = document.getElementById('remote-video-box');
+
         if (event.track.kind === 'audio') {
           remoteAudio.srcObject = event.streams[0];
+        }
+        if (event.track.kind === 'video') {
+          remoteVideo.srcObject = event.streams[0];
+          remoteBox.style.display = 'block';
+          remoteVideo.play().then(() => {
+            showNotif("Video del participante en pantalla");
+          }).catch(err => console.log("Autoplay diferido"));
         }
       };
 
@@ -1341,7 +1420,7 @@
     let dragTarget = null;
 
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.panel') || e.target.closest('#top-bar')) return;
+      if (e.target.closest('.panel') || e.target.closest('#top-bar') || e.target.closest('#remote-video-box')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1593,10 +1672,12 @@
         if (isHost) {
           const clientNameSpan = document.getElementById('client-name-status');
           const clientDot = document.getElementById('client-dot');
+          const remoteLabel = document.getElementById('remote-video-label');
           const isRecentlyActive = data.lastActive && (Date.now() - data.lastActive < 8000);
 
           if (data.clientConnected && isRecentlyActive) {
             clientNameSpan.innerText = `${data.clientName || 'Consultante'}: Conectado`;
+            remoteLabel.innerText = data.clientName || 'Consultante';
             clientDot.className = 'dot-online';
           } else if (data.clientName && data.clientName !== 'Ausente') {
             clientNameSpan.innerText = `${data.clientName}: Desconectado`;
@@ -1611,6 +1692,8 @@
             controls.target.set(data.clientCameraTarget.x, data.clientCameraTarget.y, data.clientCameraTarget.z);
             controls.update();
           }
+        } else {
+          document.getElementById('remote-video-label').innerText = data.createdBy || 'Anfitrión';
         }
 
         if (!isHost && typeof data.remoteFocus === 'boolean') {
