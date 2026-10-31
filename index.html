@@ -169,6 +169,13 @@
     .btn-warning:hover {
       background: #e6ccb2;
     }
+    .btn-info {
+      background: #457b9d;
+      color: #fff;
+    }
+    .btn-info:hover {
+      background: #1d3557;
+    }
     .btn-group {
       display: flex;
       gap: 6px;
@@ -227,6 +234,35 @@
       background: rgba(255,255,255,0.1);
       margin-left: 4px;
     }
+    /* Status Badge */
+    .status-box {
+      font-size: 0.73rem;
+      padding: 5px 8px;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(212,163,115,0.2);
+      width: 100%;
+      text-align: left;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dot-online {
+      height: 8px;
+      width: 8px;
+      background-color: #2a9d8f;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px #2a9d8f;
+    }
+    .dot-offline {
+      height: 8px;
+      width: 8px;
+      background-color: #8d99ae;
+      border-radius: 50%;
+      display: inline-block;
+    }
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -272,7 +308,15 @@
     <!-- Control Maestro del Creador -->
     <div id="host-controls" style="display: none; margin-top: 10px; border-top: 1px dashed rgba(212,163,115,0.3); padding-top: 8px;">
       <label style="font-size: 0.7rem; color: #e9c46a;">CONTROL MAESTRO ANFITRIÓN:</label>
-      <button id="btn-toggle-remote-focus" class="btn-warning">🔒 Bloquear Pantalla Consultante</button>
+      
+      <!-- Estado de conexión del Consultante -->
+      <div class="status-box" style="margin-top: 4px;">
+        <span id="client-name-status">Consultante: Ausente</span>
+        <span id="client-dot" class="dot-offline"></span>
+      </div>
+
+      <button id="btn-toggle-remote-focus" class="btn-warning" style="margin-bottom: 4px;">🔒 Bloquear Pantalla Consultante</button>
+      <button id="btn-toggle-mirror-cam" class="btn-info">👁️ Ver Tablero Consultante</button>
     </div>
   </div>
 
@@ -392,6 +436,7 @@
     let lookAtMode = false;
     let linkMode = false;
     let isRemoteFocusActive = false;
+    let isMirrorCamActive = false;
 
     // DETECTAR PARÁMETROS DE LA URL AL CARGAR
     const urlParams = new URLSearchParams(window.location.search);
@@ -432,24 +477,25 @@
 
     function updateRoomInfoUI(roomId) {
       const roomInfo = document.getElementById('room-info');
-      roomInfo.innerHTML = `
-        <div>Sala Activa: <b id="current-room-code">${roomId}</b></div>
-        <button id="btn-copy-code" class="btn-copy">🔗 Copiar Enlace Directo</button>
-      `;
-
-      document.getElementById('btn-copy-code').addEventListener('click', () => {
-        // Generar URL completa para compartir
-        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}&role=client`;
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          showNotif("Enlace de acceso copiado al portapapeles");
-        }).catch(err => {
-          console.error("Error copiando enlace:", err);
-        });
-      });
-
+      
       if (isHost) {
+        roomInfo.innerHTML = `
+          <div>Sala Activa: <b id="current-room-code">${roomId}</b></div>
+          <button id="btn-copy-code" class="btn-copy">🔗 Copiar Enlace Directo</button>
+        `;
+
+        document.getElementById('btn-copy-code').addEventListener('click', () => {
+          const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}&role=client`;
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showNotif("Enlace de acceso copiado al portapapeles");
+          }).catch(err => {
+            console.error("Error copiando enlace:", err);
+          });
+        });
+
         document.getElementById('host-controls').style.display = 'block';
       } else {
+        roomInfo.innerHTML = `<div>Conectado a Sala: <b>${roomId}</b></div>`;
         document.getElementById('host-controls').style.display = 'none';
         document.getElementById('btn-notes-toggle').style.display = 'none';
       }
@@ -469,8 +515,8 @@
       
       const payload = { remoteFocus: isRemoteFocusActive };
       if (isRemoteFocusActive) {
-        payload.cameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
-        payload.cameraTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
+        payload.hostCameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+        payload.hostCameraTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
       }
 
       await setDoc(roomRef, payload, { merge: true });
@@ -488,6 +534,33 @@
         showNotif("Controles devueltos al consultante");
       }
     });
+
+    // VER TABLERO DEL CONSULTANTE (ANFITRIÓN)
+    document.getElementById('btn-toggle-mirror-cam').addEventListener('click', () => {
+      if (!isHost) return;
+      isMirrorCamActive = !isMirrorCamActive;
+
+      const btn = document.getElementById('btn-toggle-mirror-cam');
+      if (isMirrorCamActive) {
+        btn.innerText = "👁️ Salir Vista Consultante";
+        btn.style.background = "#e76f51";
+        showNotif("Viendo la cámara del consultante");
+      } else {
+        btn.innerText = "👁️ Ver Tablero Consultante";
+        btn.style.background = "#457b9d";
+        showNotif("Salió de vista consultante");
+      }
+    });
+
+    // TRANSMITIR CÁMARA DEL CONSULTANTE
+    function publishClientCameraState() {
+      if (isHost || !currentRoomId) return;
+      const roomRef = doc(db, "rooms", currentRoomId);
+      setDoc(roomRef, {
+        clientCameraPos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        clientCameraTarget: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
+      }, { merge: true }).catch(err => console.error(err));
+    }
 
     // AUDIO CONTROL
     async function toggleAudioConnection() {
@@ -591,6 +664,12 @@
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+
+    controls.addEventListener('change', () => {
+      if (!isHost && currentRoomId) {
+        publishClientCameraState();
+      }
+    });
 
     const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.85);
     scene.add(ambientLight);
@@ -1082,6 +1161,8 @@
           createdBy: userName,
           createdAt: new Date(),
           remoteFocus: false,
+          clientConnected: false,
+          clientName: 'Ausente',
           avatars: []
         });
         
@@ -1096,13 +1177,22 @@
       }
     });
 
-    document.getElementById('btn-join-room').addEventListener('click', () => {
+    document.getElementById('btn-join-room').addEventListener('click', async () => {
       const roomId = document.getElementById('room-code-input').value.trim().toUpperCase();
+      const userName = document.getElementById('user-name').value.trim() || 'Consultante';
       if (!roomId) return alert("Código inválido.");
       
       isHost = false;
       currentRoomId = roomId;
       updateRoomInfoUI(roomId);
+
+      // Notificar al backend que el consultante se conectó
+      const roomRef = doc(db, "rooms", roomId);
+      await setDoc(roomRef, {
+        clientConnected: true,
+        clientName: userName
+      }, { merge: true });
+
       listenToRoom(roomId);
       showNotif(`Unido a ${roomId} (Modo Consultante)`);
     });
@@ -1112,7 +1202,28 @@
         if (!docSnapshot.exists()) return;
         const data = docSnapshot.data();
 
-        // CONTROL REMOTO DE FOCUS Y ALINEACIÓN DE CÁMARA EN CONSULTANTE
+        // 1. ESTADO DE CONEXIÓN DEL CONSULTANTE (PARA EL ANFITRIÓN)
+        if (isHost) {
+          const clientNameSpan = document.getElementById('client-name-status');
+          const clientDot = document.getElementById('client-dot');
+
+          if (data.clientConnected) {
+            clientNameSpan.innerText = `${data.clientName || 'Consultante'}: Conectado`;
+            clientDot.className = 'dot-online';
+          } else {
+            clientNameSpan.innerText = 'Consultante: Ausente';
+            clientDot.className = 'dot-offline';
+          }
+
+          // Ver tablero del consultante en tiempo real (Mirror Mode)
+          if (isMirrorCamActive && data.clientCameraPos && data.clientCameraTarget) {
+            camera.position.set(data.clientCameraPos.x, data.clientCameraPos.y, data.clientCameraPos.z);
+            controls.target.set(data.clientCameraTarget.x, data.clientCameraTarget.y, data.clientCameraTarget.z);
+            controls.update();
+          }
+        }
+
+        // 2. CONTROL REMOTO DE FOCUS Y ALINEACIÓN DE CÁMARA EN CONSULTANTE
         if (!isHost && typeof data.remoteFocus === 'boolean') {
           isRemoteFocusActive = data.remoteFocus;
           const focusBtn = document.getElementById('view-toggle-btn');
@@ -1123,9 +1234,9 @@
             focusBtn.classList.add('disabled-btn');
             deselectAvatar();
 
-            if (data.cameraPos && data.cameraTarget) {
-              camera.position.set(data.cameraPos.x, data.cameraPos.y, data.cameraPos.z);
-              controls.target.set(data.cameraTarget.x, data.cameraTarget.y, data.cameraTarget.z);
+            if (data.hostCameraPos && data.hostCameraTarget) {
+              camera.position.set(data.hostCameraPos.x, data.hostCameraPos.y, data.hostCameraPos.z);
+              controls.target.set(data.hostCameraTarget.x, data.hostCameraTarget.y, data.hostCameraTarget.z);
               controls.update();
             }
           } else {
