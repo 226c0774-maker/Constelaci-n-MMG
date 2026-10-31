@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.3</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.4</title>
   <style>
     * {
       box-sizing: border-box;
@@ -393,7 +393,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v2.3</div>
+  <div class="version-tag">Lainez 3D Pro Suite v2.4</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
@@ -463,19 +463,23 @@
     <div class="input-group">
       <label>Tipo de Representante:</label>
       <select id="avatar-gender">
-        <optgroup label="Hombres Adultos">
+        <optgroup label="Minifiguras y Estilo Lúdico (Lego)">
+          <option value="lego-m">Minifigura Lego - Hombre / Niño</option>
+          <option value="lego-f">Minifigura Lego - Mujer / Niña</option>
+          <option value="lego-elder">Minifigura Lego - Anciano / Ancestral</option>
+          <option value="lego-special">Minifigura Lego - Especial / Fantasía</option>
+        </optgroup>
+        <optgroup label="Hombres Adultos (Anatómicos)">
           <option value="adult-m">Hombre Adulto (Modelo A - Estándar)</option>
           <option value="adult-m2">Hombre Adulto (Modelo B - Robust/Alto)</option>
         </optgroup>
-        <optgroup label="Mujeres Adultas">
+        <optgroup label="Mujeres Adultas (Anatómicas)">
           <option value="adult-f">Mujer Adulta (Modelo A - Estándar)</option>
           <option value="adult-f2">Mujer Adulta (Modelo B - Estilizada)</option>
         </optgroup>
-        <optgroup label="Niños">
+        <optgroup label="Niños y Niñas (Anatómicos)">
           <option value="child-m">Niño (Modelo A - Menor)</option>
           <option value="child-m2">Niño (Modelo B - Mayor)</option>
-        </optgroup>
-        <optgroup label="Niñas">
           <option value="child-f">Niña (Modelo A - Menor)</option>
           <option value="child-f2">Niña (Modelo B - Mayor)</option>
         </optgroup>
@@ -633,7 +637,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v2.3)"))
+      .then(() => showNotif("Conectado a Backend (v2.4)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -1253,8 +1257,9 @@
       const bodyGroup = new THREE.Group();
       group.add(bodyGroup);
 
+      let isLego = type.startsWith('lego-');
       let isChild = type.includes('child');
-      let isFemale = type.includes('-f');
+      let isFemale = type.includes('-f') || type === 'lego-f';
       let isVariant2 = type.endsWith('2');
       let isAbstract = ['symptom', 'desire', 'secret', 'resource'].includes(type);
 
@@ -1267,7 +1272,14 @@
       if (type === 'secret') baseColor = 0x212529;
       if (type === 'resource') baseColor = 0xe9c46a;
 
-      const mat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.35 });
+      if (isLego) {
+        if (type === 'lego-m') baseColor = 0x2196f3; // Azul lego
+        else if (type === 'lego-f') baseColor = 0xe91e63; // Rosa lego
+        else if (type === 'lego-elder') baseColor = 0x795548; // Café lego
+        else baseColor = 0x9c27b0; // Púrpura especial
+      }
+
+      const mat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: isLego ? 0.2 : 0.35 });
 
       if (isAbstract) {
         let geo;
@@ -1280,7 +1292,94 @@
         mesh.position.y = 0.8;
         mesh.castShadow = true;
         bodyGroup.add(mesh);
+      } else if (isLego) {
+        // --- MODELADO MINIFIGURA ESTILO LEGO ---
+        const yellowSkinMat = new THREE.MeshStandardMaterial({ color: 0xffca28, roughness: 0.2 });
+
+        // 1. Cabeza Cilíndrica + Botón (Stud)
+        const headGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.38, 24);
+        const headMesh = new THREE.Mesh(headGeo, yellowSkinMat);
+        headMesh.position.y = 1.28;
+        headMesh.castShadow = true;
+        bodyGroup.add(headMesh);
+
+        const studGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16);
+        const studMesh = new THREE.Mesh(studGeo, yellowSkinMat);
+        studMesh.position.y = 1.51;
+        studMesh.castShadow = true;
+        bodyGroup.add(studMesh);
+
+        // Ojos y Sonrisa Lego
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1412 });
+        const eyeGeo = new THREE.SphereGeometry(0.035, 12, 12);
+        
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.09, 1.32, 0.22);
+        bodyGroup.add(eyeL);
+
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(0.09, 1.32, 0.22);
+        bodyGroup.add(eyeR);
+
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x1a1412 });
+        const mouthGeo = new THREE.BoxGeometry(0.1, 0.02, 0.02);
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, 1.21, 0.23);
+        bodyGroup.add(mouth);
+
+        // 2. Torso Trapezoidal
+        const torsoGeo = new THREE.CylinderGeometry(0.3, 0.42, 0.55, 4);
+        torsoGeo.rotateY(Math.PI / 4);
+        const torsoMesh = new THREE.Mesh(torsoGeo, mat);
+        torsoMesh.position.y = 0.82;
+        torsoMesh.castShadow = true;
+        bodyGroup.add(torsoMesh);
+
+        // 3. Cadera y Piernas de Bloque
+        const hipGeo = new THREE.BoxGeometry(0.44, 0.12, 0.26);
+        const hipMesh = new THREE.Mesh(hipGeo, mat);
+        hipMesh.position.y = 0.48;
+        hipMesh.castShadow = true;
+        bodyGroup.add(hipMesh);
+
+        const legGeo = new THREE.BoxGeometry(0.19, 0.42, 0.24);
+        const legL = new THREE.Mesh(legGeo, mat);
+        legL.position.set(-0.11, 0.21, 0);
+        legL.castShadow = true;
+        bodyGroup.add(legL);
+
+        const legR = new THREE.Mesh(legGeo, mat);
+        legR.position.set(0.11, 0.21, 0);
+        legR.castShadow = true;
+        bodyGroup.add(legR);
+
+        // 4. Brazos en Ángulo y Manos en C
+        const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.4, 12);
+        const armL = new THREE.Mesh(armGeo, mat);
+        armL.position.set(-0.27, 0.82, 0);
+        armL.rotation.z = 0.35;
+        armL.castShadow = true;
+        bodyGroup.add(armL);
+
+        const armR = new THREE.Mesh(armGeo, mat);
+        armR.position.set(0.27, 0.82, 0);
+        armR.rotation.z = -0.35;
+        armR.castShadow = true;
+        bodyGroup.add(armR);
+
+        const handGeo = new THREE.TorusGeometry(0.05, 0.02, 8, 16, Math.PI * 1.5);
+        const handL = new THREE.Mesh(handGeo, yellowSkinMat);
+        handL.position.set(-0.33, 0.62, 0.05);
+        handL.rotation.x = Math.PI / 2;
+        bodyGroup.add(handL);
+
+        const handR = new THREE.Mesh(handGeo, yellowSkinMat);
+        handR.position.set(0.33, 0.62, 0.05);
+        handR.rotation.x = Math.PI / 2;
+        bodyGroup.add(handR);
+
       } else {
+        // --- MODELADO HUMANO ANATÓMICO ---
         const headGeo = new THREE.SphereGeometry(0.27 * scaleXZ, 24, 24);
         const head = new THREE.Mesh(headGeo, mat);
         head.position.y = (1.65 * scaleY);
@@ -1365,7 +1464,7 @@
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.y = 2.4 * scaleY;
+      sprite.position.y = isLego ? 1.8 : (2.4 * scaleY);
       group.add(sprite);
 
       group.userData = {
@@ -1422,7 +1521,7 @@
     }
 
     function addAvatarToScene(data) {
-      const avatarGroup = buildHumanMesh(data.type || 'adult-m');
+      const avatarGroup = buildHumanMesh(data.type || 'lego-m');
       avatarGroup.position.set(data.x || 0, 0, data.z || 0);
       avatarGroup.rotation.y = data.rotation || 0;
       
@@ -1449,7 +1548,9 @@
       const colorHex = EMOTION_COLORS[emotionKey] || EMOTION_COLORS.neutral;
 
       if (avatarGroup.userData.auraMesh) avatarGroup.userData.auraMesh.material.color.setHex(colorHex);
-      if (avatarGroup.userData.bodyMaterial) avatarGroup.userData.bodyMaterial.color.setHex(colorHex);
+      if (avatarGroup.userData.bodyMaterial && !avatarGroup.userData.type.startsWith('lego-')) {
+        avatarGroup.userData.bodyMaterial.color.setHex(colorHex);
+      }
 
       const posture = avatarGroup.userData.posture;
       const bodyGroup = avatarGroup.userData.bodyGroup;
@@ -1672,7 +1773,7 @@
       const dataAvatars = avatars.map(a => ({
         id: a.userData.id,
         label: a.userData.label || 'Persona',
-        type: a.userData.type || 'adult-m',
+        type: a.userData.type || 'lego-m',
         emotion: a.userData.emotion || 'neutral',
         posture: a.userData.posture || 'standing',
         userScale: Number(a.userData.userScale) || 100,
