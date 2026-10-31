@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.1</title>
   <style>
     * {
       box-sizing: border-box;
@@ -62,7 +62,6 @@
       width: 340px;
       display: none;
     }
-    /* Modal de Historial de Salas */
     #history-modal {
       position: absolute;
       top: 50%;
@@ -118,6 +117,66 @@
       color: #e9c46a;
       border-color: rgba(233, 196, 106, 0.5);
     }
+    .version-tag {
+      position: absolute;
+      bottom: 8px;
+      left: 12px;
+      z-index: 100;
+      font-size: 0.68rem;
+      color: rgba(212, 163, 115, 0.6);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+    }
+
+    /* ESTILOS DE VENTANAS FLOTANTES DE VIDEO */
+    #video-container {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .video-box {
+      width: 180px;
+      height: 135px;
+      background: rgba(28, 24, 22, 0.9);
+      border: 1px solid rgba(212, 163, 115, 0.4);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+      transition: transform 0.3s ease;
+    }
+    .video-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #110d0c;
+    }
+    .video-label {
+      position: absolute;
+      bottom: 4px;
+      left: 6px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #f5efe6;
+      background: rgba(0,0,0,0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    #local-video-box {
+      width: 110px;
+      height: 82px;
+      align-self: flex-end;
+      border-color: rgba(88, 129, 87, 0.6);
+    }
+
     h2, h3 {
       color: #e6ccb2;
       margin-bottom: 10px;
@@ -303,8 +362,6 @@
     @keyframes blinker {
       50% { opacity: 0.2; }
     }
-
-    /* Estilos de la Lista del Historial */
     .history-item {
       background: rgba(39, 33, 30, 0.8);
       border: 1px solid rgba(212, 163, 115, 0.2);
@@ -347,15 +404,29 @@
 <body>
 
   <div id="canvas-container"></div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.1</div>
   
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
     <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
+    <button id="video-toggle-btn" class="top-btn">📹 Conectar Cámara</button>
   </div>
 
   <div id="notification">Notificación</div>
 
   <audio id="remote-audio" autoplay></audio>
+
+  <!-- Ventanas Flotantes de Video -->
+  <div id="video-container" style="display: none;">
+    <div id="remote-video-box" class="video-box">
+      <video id="remote-video" autoplay playsinline></video>
+      <span id="remote-video-label" class="video-label">Participante</span>
+    </div>
+    <div id="local-video-box" class="video-box">
+      <video id="local-video" autoplay playsinline muted></video>
+      <span class="video-label">Tú</span>
+    </div>
+  </div>
 
   <!-- Panel Sincronización -->
   <div id="sync-panel" class="panel">
@@ -556,9 +627,11 @@
       }
     }
 
+    // AUDIO & VIDEO WEBRTC EN TIEMPO REAL
     let localStream = null;
     let peerConnection = null;
     let isAudioConnected = false;
+    let isVideoConnected = false;
     let isMuted = false;
 
     const rtcServers = {
@@ -569,7 +642,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend"))
+      .then(() => showNotif("Conectado a Backend (v1.1)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -610,6 +683,62 @@
       if (!selectedAvatarId) return null;
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
+
+    // CONTROL DE CÁMARA Y VIDEO WEBRTC
+    async function toggleVideoConnection() {
+      const videoBtn = document.getElementById('video-toggle-btn');
+      const videoContainer = document.getElementById('video-container');
+
+      if (!currentRoomId) {
+        return alert("Primero debes crear o unirte a una sala para activar la cámara.");
+      }
+
+      if (!isVideoConnected) {
+        try {
+          if (!localStream) {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+          } else {
+            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoStream.getVideoTracks().forEach(track => localStream.addTrack(track));
+          }
+
+          document.getElementById('local-video').srcObject = localStream;
+          videoContainer.style.display = 'flex';
+          isVideoConnected = true;
+
+          videoBtn.innerText = "📷 Apagar Cam";
+          videoBtn.classList.add('active-audio');
+          showNotif("Cámara conectada");
+
+          if (!peerConnection) {
+            setupWebRTCConnection();
+          } else {
+            localStream.getVideoTracks().forEach(track => {
+              peerConnection.addTrack(track, localStream);
+            });
+          }
+        } catch (err) {
+          console.error("Error cámara:", err);
+          showNotif("Permiso de cámara denegado");
+        }
+      } else {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = !videoTrack.enabled;
+          if (!videoTrack.enabled) {
+            videoBtn.innerText = "📹 Conectar Cámara";
+            videoBtn.classList.remove('active-audio');
+            showNotif("Cámara pausada");
+          } else {
+            videoBtn.innerText = "📷 Apagar Cam";
+            videoBtn.classList.add('active-audio');
+            showNotif("Cámara reanudada");
+          }
+        }
+      }
+    }
+
+    document.getElementById('video-toggle-btn').addEventListener('click', toggleVideoConnection);
 
     // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -678,7 +807,6 @@
       }
     });
 
-    // GUARDAR EN FIREBASE
     async function saveNotesToFirebase() {
       if (!currentRoomId) return alert("Debes crear o unirte a una sala primero.");
       const notesArea = document.getElementById('session-notes');
@@ -698,7 +826,6 @@
 
     document.getElementById('btn-save-notes-firebase').addEventListener('click', saveNotesToFirebase);
 
-    // HISTORIAL Y GESTIÓN DE SALAS
     document.getElementById('btn-open-history').addEventListener('click', loadRoomsHistory);
     document.getElementById('btn-close-history').addEventListener('click', () => {
       document.getElementById('history-modal').style.display = 'none';
@@ -753,7 +880,6 @@
 
         container.innerHTML = html;
 
-        // BIND EVENTOS A BOTONES DE LA LISTA
         document.querySelectorAll('.btn-load-notes').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             const roomId = e.target.getAttribute('data-id');
@@ -803,7 +929,6 @@
       }
     }
 
-    // FUNCIONES DE COPIAR Y DESCARGAR LOCAL
     document.getElementById('btn-copy-notes').addEventListener('click', () => {
       const notesArea = document.getElementById('session-notes');
       if (!notesArea.value.trim()) return alert("No hay texto para copiar.");
@@ -848,7 +973,6 @@
       showNotif("Resumen generado");
     });
 
-    // CONTROL REMOTO FOCUS (ANFITRIÓN)
     document.getElementById('btn-toggle-remote-focus').addEventListener('click', async () => {
       if (!isHost || !currentRoomId) return;
 
@@ -877,7 +1001,6 @@
       }
     });
 
-    // VER TABLERO DEL CONSULTANTE (ANFITRIÓN)
     document.getElementById('btn-toggle-mirror-cam').addEventListener('click', () => {
       if (!isHost) return;
       isMirrorCamActive = !isMirrorCamActive;
@@ -921,13 +1044,15 @@
 
       if (!isAudioConnected) {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          if (!localStream) {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          }
           isAudioConnected = true;
           audioBtn.innerText = "🎙️ Micrófono Activo";
           audioBtn.classList.add('active-audio');
           showNotif("Micrófono conectado");
 
-          setupWebRTCConnection();
+          if (!peerConnection) setupWebRTCConnection();
         } catch (err) {
           console.error("Error micrófono:", err);
           showNotif("Permiso de micrófono denegado");
@@ -958,7 +1083,16 @@
 
       peerConnection.ontrack = event => {
         const remoteAudio = document.getElementById('remote-audio');
-        remoteAudio.srcObject = event.streams[0];
+        const remoteVideo = document.getElementById('remote-video');
+        const videoContainer = document.getElementById('video-container');
+
+        if (event.track.kind === 'audio') {
+          remoteAudio.srcObject = event.streams[0];
+        }
+        if (event.track.kind === 'video') {
+          remoteVideo.srcObject = event.streams[0];
+          videoContainer.style.display = 'flex';
+        }
       };
 
       const roomRef = doc(db, "rooms", currentRoomId);
@@ -1306,7 +1440,7 @@
     let dragTarget = null;
 
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.panel') || e.target.closest('#top-bar')) return;
+      if (e.target.closest('.panel') || e.target.closest('#top-bar') || e.target.closest('#video-container')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1556,10 +1690,12 @@
         if (isHost) {
           const clientNameSpan = document.getElementById('client-name-status');
           const clientDot = document.getElementById('client-dot');
+          const remoteLabel = document.getElementById('remote-video-label');
           const isRecentlyActive = data.lastActive && (Date.now() - data.lastActive < 8000);
 
           if (data.clientConnected && isRecentlyActive) {
             clientNameSpan.innerText = `${data.clientName || 'Consultante'}: Conectado`;
+            remoteLabel.innerText = data.clientName || 'Consultante';
             clientDot.className = 'dot-online';
           } else if (data.clientName && data.clientName !== 'Ausente') {
             clientNameSpan.innerText = `${data.clientName}: Desconectado`;
@@ -1574,6 +1710,8 @@
             controls.target.set(data.clientCameraTarget.x, data.clientCameraTarget.y, data.clientCameraTarget.z);
             controls.update();
           }
+        } else {
+          document.getElementById('remote-video-label').innerText = data.createdBy || 'Anfitrión';
         }
 
         if (!isHost && typeof data.remoteFocus === 'boolean') {
