@@ -59,7 +59,7 @@
     #notes-panel {
       bottom: 20px;
       right: 20px;
-      width: 320px;
+      width: 340px;
       display: none;
     }
     #top-bar {
@@ -133,10 +133,28 @@
       font-size: 0.82rem;
       outline: none;
     }
+    /* Estilos mejorados para la caja de texto y la barra de desplazamiento */
     textarea {
       resize: vertical;
-      min-height: 110px;
+      height: 140px;
       font-family: inherit;
+      overflow-y: scroll;
+      scrollbar-width: thin;
+      scrollbar-color: #7f5539 #1a1614;
+    }
+    textarea::-webkit-scrollbar {
+      width: 8px;
+    }
+    textarea::-webkit-scrollbar-track {
+      background: #1a1614;
+      border-radius: 4px;
+    }
+    textarea::-webkit-scrollbar-thumb {
+      background: #7f5539;
+      border-radius: 4px;
+    }
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: #9c6644;
     }
     button {
       background: #b08968;
@@ -425,8 +443,13 @@
     <textarea id="session-notes" placeholder="Apunta observaciones sistémicas o inicia la transcripción automática de audio..."></textarea>
     
     <div class="btn-group" style="margin-top: 6px;">
-      <button id="btn-summarize-notes" class="btn-secondary">✨ Generar Resumen</button>
-      <button id="btn-clear-transcript" class="btn-danger">🗑️ Eliminar Transcripción</button>
+      <button id="btn-summarize-notes" class="btn-secondary">✨ Resumen</button>
+      <button id="btn-copy-notes" class="btn-info">📋 Copiar</button>
+    </div>
+
+    <div class="btn-group" style="margin-top: 4px;">
+      <button id="btn-download-notes" style="background: #7f5539;">💾 Guardar TXT</button>
+      <button id="btn-clear-transcript" class="btn-danger">🗑️ Eliminar</button>
     </div>
   </div>
 
@@ -460,7 +483,6 @@
     let isTranscribing = false;
     let baseNotesText = '';
 
-    // DETECTAR PARÁMETROS DE LA URL AL CARGAR
     const urlParams = new URLSearchParams(window.location.search);
     const urlRoom = urlParams.get('room');
     const urlRole = urlParams.get('role');
@@ -473,7 +495,6 @@
       }
     }
 
-    // AUDIO WEBRTC
     let localStream = null;
     let peerConnection = null;
     let isAudioConnected = false;
@@ -529,13 +550,13 @@
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
 
-    // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO (OPTIMIZADA)
+    // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'es-MX'; // Optimizado para pronunciación hispana
+      recognition.lang = 'es-MX';
 
       recognition.onresult = (event) => {
         const notesArea = document.getElementById('session-notes');
@@ -556,6 +577,9 @@
         }
 
         notesArea.value = baseNotesText + (interimTranscript ? '\n[...' + interimTranscript + ']' : '');
+        
+        // Auto-scroll al final del texto al transcribir
+        notesArea.scrollTop = notesArea.scrollHeight;
       };
 
       recognition.onerror = (e) => {
@@ -595,13 +619,37 @@
       }
     });
 
-    // BOTÓN ELIMINAR TRANSCRIPCIÓN Y NOTAS
+    // FUNCIONES DE GUARDADO Y EXPORTACIÓN
+    document.getElementById('btn-copy-notes').addEventListener('click', () => {
+      const notesArea = document.getElementById('session-notes');
+      if (!notesArea.value.trim()) return alert("No hay texto para copiar.");
+      
+      navigator.clipboard.writeText(notesArea.value).then(() => {
+        showNotif("Notas copiadas al portapapeles");
+      }).catch(err => {
+        console.error("Error al copiar:", err);
+      });
+    });
+
+    document.getElementById('btn-download-notes').addEventListener('click', () => {
+      const notesArea = document.getElementById('session-notes');
+      if (!notesArea.value.trim()) return alert("No hay texto para guardar.");
+
+      const blob = new Blob([notesArea.value], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Transcripcion_Sesion_${currentRoomId || 'Local'}.txt`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      showNotif("Archivo TXT descargado");
+    });
+
     document.getElementById('btn-clear-transcript').addEventListener('click', () => {
       if (confirm("¿Deseas borrar todo el texto de las notas y la transcripción?")) {
         const notesArea = document.getElementById('session-notes');
         notesArea.value = '';
         baseNotesText = '';
-        showNotif("Notas y transcripción eliminadas");
+        showNotif("Notas eliminadas");
       }
     });
 
@@ -614,6 +662,7 @@
         "• Posicionamiento y reorientación de figuras completados.\n" +
         "• Puntos de acuerdo clave recopilados durante la consulta.";
       notesArea.value = baseNotesText;
+      notesArea.scrollTop = notesArea.scrollHeight;
       showNotif("Resumen generado");
     });
 
@@ -663,7 +712,6 @@
       }
     });
 
-    // TRANSMITIR CÁMARA DEL CONSULTANTE
     function publishClientCameraState() {
       if (isHost || !currentRoomId) return;
       const roomRef = doc(db, "rooms", currentRoomId);
@@ -675,7 +723,6 @@
       }, { merge: true }).catch(err => console.error(err));
     }
 
-    // NOTIFICAR DESCONEXIÓN AL CERRAR PESTAÑA
     window.addEventListener('beforeunload', () => {
       if (!isHost && currentRoomId) {
         const roomRef = doc(db, "rooms", currentRoomId);
@@ -683,7 +730,6 @@
       }
     });
 
-    // AUDIO CONTROL
     async function toggleAudioConnection() {
       const audioBtn = document.getElementById('audio-toggle-btn');
       
@@ -769,7 +815,7 @@
 
     document.getElementById('audio-toggle-btn').addEventListener('click', toggleAudioConnection);
 
-    // --- ESCENA THREE.JS ---
+    // ESCENA THREE.JS
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1614);
@@ -870,7 +916,6 @@
         head.castShadow = true;
         bodyGroup.add(head);
 
-        // OJOS AGRANDADOS PARA IDENTIFICACIÓN CLARA DE MIRADA
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1412 });
         const eyeGeo = new THREE.SphereGeometry(0.065 * scaleXZ, 16, 16);
         
@@ -882,7 +927,6 @@
         eyeR.position.set(0.11 * scaleXZ, head.position.y + 0.04 * scaleY, 0.22 * scaleXZ);
         bodyGroup.add(eyeR);
 
-        // BOCA AGRANDADA Y DEFINIDA
         const mouthMat = new THREE.MeshBasicMaterial({ color: 0x4a2810 });
         const mouthGeo = new THREE.BoxGeometry(0.14 * scaleXZ, 0.035 * scaleY, 0.03 * scaleXZ);
         const mouth = new THREE.Mesh(mouthGeo, mouthMat);
