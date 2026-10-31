@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.6</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.7</title>
   <style>
     * {
       box-sizing: border-box;
@@ -130,50 +130,6 @@
       font-weight: 600;
       letter-spacing: 0.5px;
       pointer-events: none;
-    }
-
-    /* VENTANAS DE CÁMARA A LOS LADOS DEL MENÚ CENTRAL */
-    .video-box {
-      position: absolute;
-      top: 14px;
-      width: 130px;
-      height: 95px;
-      background: rgba(28, 24, 22, 0.95);
-      border: 1px solid rgba(212, 163, 115, 0.4);
-      border-radius: 10px;
-      overflow: hidden;
-      z-index: 95;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-      backdrop-filter: blur(8px);
-    }
-    .video-box video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      background: #110d0c;
-    }
-    .video-label {
-      position: absolute;
-      bottom: 4px;
-      left: 6px;
-      font-size: 0.62rem;
-      font-weight: 600;
-      color: #f5efe6;
-      background: rgba(0,0,0,0.7);
-      padding: 1px 6px;
-      border-radius: 4px;
-    }
-
-    /* VENTANA LOCAL ("TÚ") */
-    #local-video-box {
-      right: calc(50% + 225px);
-      border-color: rgba(88, 129, 87, 0.6);
-    }
-
-    /* VENTANA REMOTA ("PARTICIPANTE") */
-    #remote-video-box {
-      left: calc(50% + 225px);
-      border-color: rgba(69, 123, 157, 0.6);
     }
 
     h2, h3 {
@@ -403,26 +359,12 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.6</div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.7</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
     <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
-    <button id="video-toggle-btn" class="top-btn">📹 Conectar Cámara</button>
-    <button id="remote-play-btn" class="top-btn btn-warning" style="display: none;">📺 Ver Participante</button>
-  </div>
-
-  <!-- VENTANA "TÚ" A LA IZQUIERDA DE FOCUS -->
-  <div id="local-video-box" class="video-box" style="display: none;">
-    <video id="local-video" autoplay playsinline muted></video>
-    <span class="video-label">Tú</span>
-  </div>
-
-  <!-- VENTANA "PARTICIPANTE" A LA DERECHA DE CONECTAR CÁMARA -->
-  <div id="remote-video-box" class="video-box" style="display: none;">
-    <video id="remote-video" autoplay playsinline></video>
-    <span id="remote-video-label" class="video-label">Participante</span>
   </div>
 
   <div id="notification">Notificación</div>
@@ -625,11 +567,10 @@
       }
     }
 
-    // WEBRTC BIDIRECCIONAL EN TIEMPO REAL
+    // AUDIO WEBRTC
     let localStream = null;
     let peerConnection = null;
     let isAudioConnected = false;
-    let isVideoConnected = false;
     let isMuted = false;
 
     const rtcServers = {
@@ -640,7 +581,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.6)"))
+      .then(() => showNotif("Conectado a Backend (v1.7)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -684,70 +625,6 @@
       if (!selectedAvatarId) return null;
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
-
-    // CÁMARA LOCAL Y REMOTA
-    async function toggleVideoConnection() {
-      const videoBtn = document.getElementById('video-toggle-btn');
-      const localBox = document.getElementById('local-video-box');
-
-      if (!currentRoomId) {
-        return alert("Primero debes crear o unirte a una sala para activar la cámara.");
-      }
-
-      if (!isVideoConnected) {
-        try {
-          if (!localStream) {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-          } else {
-            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoStream.getVideoTracks().forEach(track => localStream.addTrack(track));
-          }
-
-          document.getElementById('local-video').srcObject = localStream;
-          localBox.style.display = 'block';
-          isVideoConnected = true;
-
-          videoBtn.innerText = "📷 Apagar Cam";
-          videoBtn.classList.add('active-audio');
-          showNotif("Tu cámara está activa");
-
-          if (!peerConnection) {
-            setupWebRTCConnection();
-          } else {
-            localStream.getTracks().forEach(track => {
-              peerConnection.addTrack(track, localStream);
-            });
-          }
-        } catch (err) {
-          console.error("Error cámara:", err);
-          showNotif("Permiso de cámara denegado");
-        }
-      } else {
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
-          videoTrack.enabled = !videoTrack.enabled;
-          if (!videoTrack.enabled) {
-            videoBtn.innerText = "📹 Conectar Cámara";
-            videoBtn.classList.remove('active-audio');
-            showNotif("Cámara pausada");
-          } else {
-            videoBtn.innerText = "📷 Apagar Cam";
-            videoBtn.classList.add('active-audio');
-            showNotif("Cámara reanudada");
-          }
-        }
-      }
-    }
-
-    document.getElementById('video-toggle-btn').addEventListener('click', toggleVideoConnection);
-
-    document.getElementById('remote-play-btn').addEventListener('click', () => {
-      const remoteVideo = document.getElementById('remote-video');
-      remoteVideo.play().then(() => {
-        document.getElementById('remote-play-btn').style.display = 'none';
-        showNotif("Video del participante activado");
-      }).catch(err => console.error(err));
-    });
 
     // TRANSCRIPCIÓN EN VIVO
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1094,22 +971,8 @@
 
       peerConnection.ontrack = event => {
         const remoteAudio = document.getElementById('remote-audio');
-        const remoteVideo = document.getElementById('remote-video');
-        const remoteBox = document.getElementById('remote-video-box');
-
         if (event.track.kind === 'audio') {
           remoteAudio.srcObject = event.streams[0];
-        }
-        if (event.track.kind === 'video') {
-          remoteVideo.srcObject = event.streams[0];
-          remoteBox.style.display = 'block';
-
-          remoteVideo.play().then(() => {
-            showNotif("Cámara del participante recibida");
-          }).catch(err => {
-            console.log("Autoplay bloqueado:", err);
-            document.getElementById('remote-play-btn').style.display = 'block';
-          });
         }
       };
 
@@ -1478,7 +1341,7 @@
     let dragTarget = null;
 
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.panel') || e.target.closest('#top-bar') || e.target.closest('.video-box')) return;
+      if (e.target.closest('.panel') || e.target.closest('#top-bar')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1730,12 +1593,10 @@
         if (isHost) {
           const clientNameSpan = document.getElementById('client-name-status');
           const clientDot = document.getElementById('client-dot');
-          const remoteLabel = document.getElementById('remote-video-label');
           const isRecentlyActive = data.lastActive && (Date.now() - data.lastActive < 8000);
 
           if (data.clientConnected && isRecentlyActive) {
             clientNameSpan.innerText = `${data.clientName || 'Consultante'}: Conectado`;
-            remoteLabel.innerText = data.clientName || 'Consultante';
             clientDot.className = 'dot-online';
           } else if (data.clientName && data.clientName !== 'Ausente') {
             clientNameSpan.innerText = `${data.clientName}: Desconectado`;
@@ -1750,8 +1611,6 @@
             controls.target.set(data.clientCameraTarget.x, data.clientCameraTarget.y, data.clientCameraTarget.z);
             controls.update();
           }
-        } else {
-          document.getElementById('remote-video-label').innerText = data.createdBy || 'Anfitrión';
         }
 
         if (!isHost && typeof data.remoteFocus === 'boolean') {
