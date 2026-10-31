@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.4</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v2.5</title>
   <style>
     * {
       box-sizing: border-box;
@@ -393,7 +393,7 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v2.4</div>
+  <div class="version-tag">Lainez 3D Pro Suite v2.5</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
@@ -463,7 +463,7 @@
     <div class="input-group">
       <label>Tipo de Representante:</label>
       <select id="avatar-gender">
-        <optgroup label="Minifiguras y Estilo Lúdico (Lego)">
+        <optgroup label="Minifiguras Estilo Lego">
           <option value="lego-m">Minifigura Lego - Hombre / Niño</option>
           <option value="lego-f">Minifigura Lego - Mujer / Niña</option>
           <option value="lego-elder">Minifigura Lego - Anciano / Ancestral</option>
@@ -519,7 +519,7 @@
     </div>
 
     <div class="input-group">
-      <label>Estado / Aura Emocional:</label>
+      <label>Estado / Aura Emocional (Color Vestimenta):</label>
       <select id="insp-emotion">
         <option value="neutral">Neutro (Tono Cálido)</option>
         <option value="love">Amor / Vínculo (Verde Esmeralda)</option>
@@ -637,7 +637,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v2.4)"))
+      .then(() => showNotif("Conectado a Backend (v2.5)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -1244,7 +1244,7 @@
     const avatars = [];
     const links = [];
     const EMOTION_COLORS = {
-      neutral: 0xd4a373,
+      neutral: 0x2196f3, // Azul lego por defecto
       love: 0x2a9d8f,
       grief: 0x457b9d,
       anger: 0xe76f51,
@@ -1252,7 +1252,7 @@
       exclusion: 0x212529
     };
 
-    function buildHumanMesh(type = 'adult-m') {
+    function buildHumanMesh(type = 'lego-m') {
       const group = new THREE.Group();
       const bodyGroup = new THREE.Group();
       group.add(bodyGroup);
@@ -1265,21 +1265,17 @@
 
       let scaleY = isChild ? (isVariant2 ? 0.75 : 0.60) : (isVariant2 ? 1.08 : 1.0);
       let scaleXZ = isChild ? (isVariant2 ? 0.80 : 0.70) : (isVariant2 ? (isFemale ? 0.90 : 1.15) : 1.0);
-      let baseColor = isFemale ? (isVariant2 ? 0xe0a98b : 0xddb892) : (isVariant2 ? 0xc89665 : 0xd4a373);
+      
+      let initialClothesColor = EMOTION_COLORS.neutral;
+      let baseBodyColor = isFemale ? (isVariant2 ? 0xe0a98b : 0xddb892) : (isVariant2 ? 0xc89665 : 0xd4a373);
 
-      if (type === 'symptom') baseColor = 0x9a031e;
-      if (type === 'desire') baseColor = 0x2a9d8f;
-      if (type === 'secret') baseColor = 0x212529;
-      if (type === 'resource') baseColor = 0xe9c46a;
+      if (type === 'symptom') baseBodyColor = 0x9a031e;
+      if (type === 'desire') baseBodyColor = 0x2a9d8f;
+      if (type === 'secret') baseBodyColor = 0x212529;
+      if (type === 'resource') baseBodyColor = 0xe9c46a;
 
-      if (isLego) {
-        if (type === 'lego-m') baseColor = 0x2196f3; // Azul lego
-        else if (type === 'lego-f') baseColor = 0xe91e63; // Rosa lego
-        else if (type === 'lego-elder') baseColor = 0x795548; // Café lego
-        else baseColor = 0x9c27b0; // Púrpura especial
-      }
-
-      const mat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: isLego ? 0.2 : 0.35 });
+      const bodyMat = new THREE.MeshStandardMaterial({ color: baseBodyColor, roughness: 0.35 });
+      const clothesMat = new THREE.MeshStandardMaterial({ color: initialClothesColor, roughness: 0.2 });
 
       if (isAbstract) {
         let geo;
@@ -1288,15 +1284,15 @@
         else if (type === 'secret') geo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
         else geo = new THREE.DodecahedronGeometry(0.7);
 
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = new THREE.Mesh(geo, bodyMat);
         mesh.position.y = 0.8;
         mesh.castShadow = true;
         bodyGroup.add(mesh);
       } else if (isLego) {
-        // --- MODELADO MINIFIGURA ESTILO LEGO ---
+        // --- MODELADO MINIFIGURA LEGO CON PIEL AMARILLA PERMANENTE ---
         const yellowSkinMat = new THREE.MeshStandardMaterial({ color: 0xffca28, roughness: 0.2 });
 
-        // 1. Cabeza Cilíndrica + Botón (Stud)
+        // 1. Cabeza Cilíndrica + Stud (Piel Amarilla)
         const headGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.38, 24);
         const headMesh = new THREE.Mesh(headGeo, yellowSkinMat);
         headMesh.position.y = 1.28;
@@ -1309,7 +1305,7 @@
         studMesh.castShadow = true;
         bodyGroup.add(studMesh);
 
-        // Ojos y Sonrisa Lego
+        // Ojos y Expresión
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1412 });
         const eyeGeo = new THREE.SphereGeometry(0.035, 12, 12);
         
@@ -1327,41 +1323,41 @@
         mouth.position.set(0, 1.21, 0.23);
         bodyGroup.add(mouth);
 
-        // 2. Torso Trapezoidal
+        // 2. Torso (Vestimenta - Cambia de color)
         const torsoGeo = new THREE.CylinderGeometry(0.3, 0.42, 0.55, 4);
         torsoGeo.rotateY(Math.PI / 4);
-        const torsoMesh = new THREE.Mesh(torsoGeo, mat);
+        const torsoMesh = new THREE.Mesh(torsoGeo, clothesMat);
         torsoMesh.position.y = 0.82;
         torsoMesh.castShadow = true;
         bodyGroup.add(torsoMesh);
 
-        // 3. Cadera y Piernas de Bloque
+        // 3. Cadera y Piernas (Vestimenta - Cambia de color)
         const hipGeo = new THREE.BoxGeometry(0.44, 0.12, 0.26);
-        const hipMesh = new THREE.Mesh(hipGeo, mat);
+        const hipMesh = new THREE.Mesh(hipGeo, clothesMat);
         hipMesh.position.y = 0.48;
         hipMesh.castShadow = true;
         bodyGroup.add(hipMesh);
 
         const legGeo = new THREE.BoxGeometry(0.19, 0.42, 0.24);
-        const legL = new THREE.Mesh(legGeo, mat);
+        const legL = new THREE.Mesh(legGeo, clothesMat);
         legL.position.set(-0.11, 0.21, 0);
         legL.castShadow = true;
         bodyGroup.add(legL);
 
-        const legR = new THREE.Mesh(legGeo, mat);
+        const legR = new THREE.Mesh(legGeo, clothesMat);
         legR.position.set(0.11, 0.21, 0);
         legR.castShadow = true;
         bodyGroup.add(legR);
 
-        // 4. Brazos en Ángulo y Manos en C
+        // 4. Brazos (Vestimenta) y Manos C (Piel Amarilla)
         const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.4, 12);
-        const armL = new THREE.Mesh(armGeo, mat);
+        const armL = new THREE.Mesh(armGeo, clothesMat);
         armL.position.set(-0.27, 0.82, 0);
         armL.rotation.z = 0.35;
         armL.castShadow = true;
         bodyGroup.add(armL);
 
-        const armR = new THREE.Mesh(armGeo, mat);
+        const armR = new THREE.Mesh(armGeo, clothesMat);
         armR.position.set(0.27, 0.82, 0);
         armR.rotation.z = -0.35;
         armR.castShadow = true;
@@ -1379,9 +1375,9 @@
         bodyGroup.add(handR);
 
       } else {
-        // --- MODELADO HUMANO ANATÓMICO ---
+        // --- MODELADO ANATÓMICO TRADICIONAL ---
         const headGeo = new THREE.SphereGeometry(0.27 * scaleXZ, 24, 24);
-        const head = new THREE.Mesh(headGeo, mat);
+        const head = new THREE.Mesh(headGeo, bodyMat);
         head.position.y = (1.65 * scaleY);
         head.castShadow = true;
         bodyGroup.add(head);
@@ -1405,48 +1401,48 @@
 
         const noseGeo = new THREE.ConeGeometry(0.055 * scaleXZ, 0.15 * scaleY, 12);
         noseGeo.rotateX(Math.PI / 2);
-        const nose = new THREE.Mesh(noseGeo, mat);
+        const nose = new THREE.Mesh(noseGeo, bodyMat);
         nose.position.set(0, head.position.y - 0.01 * scaleY, 0.27 * scaleXZ);
         bodyGroup.add(nose);
 
         const neckGeo = new THREE.CylinderGeometry(0.09 * scaleXZ, 0.1 * scaleXZ, 0.12 * scaleY, 12);
-        const neck = new THREE.Mesh(neckGeo, mat);
+        const neck = new THREE.Mesh(neckGeo, bodyMat);
         neck.position.y = (1.48 * scaleY);
         bodyGroup.add(neck);
 
         const torsoTopWidth = isFemale ? (isVariant2 ? 0.28 : 0.30) : (isVariant2 ? 0.44 : 0.38);
         const torsoBotWidth = isFemale ? (isVariant2 ? 0.24 : 0.22) : (isVariant2 ? 0.30 : 0.26);
         const torsoGeo = new THREE.CylinderGeometry(torsoTopWidth * scaleXZ, torsoBotWidth * scaleXZ, 0.55 * scaleY, 16);
-        const torso = new THREE.Mesh(torsoGeo, mat);
+        const torso = new THREE.Mesh(torsoGeo, bodyMat);
         torso.position.y = (1.18 * scaleY);
         torso.castShadow = true;
         bodyGroup.add(torso);
 
         const hipGeo = new THREE.CylinderGeometry(torsoBotWidth * scaleXZ, (isFemale ? 0.28 : 0.24) * scaleXZ, 0.3 * scaleY, 16);
-        const hip = new THREE.Mesh(hipGeo, mat);
+        const hip = new THREE.Mesh(hipGeo, bodyMat);
         hip.position.y = (0.78 * scaleY);
         hip.castShadow = true;
         bodyGroup.add(hip);
 
         const legGeo = new THREE.CylinderGeometry(0.08 * scaleXZ, 0.06 * scaleXZ, 0.65 * scaleY, 12);
-        const legL = new THREE.Mesh(legGeo, mat);
+        const legL = new THREE.Mesh(legGeo, bodyMat);
         legL.position.set(-0.11 * scaleXZ, 0.325 * scaleY, 0);
         legL.castShadow = true;
         bodyGroup.add(legL);
 
-        const legR = new THREE.Mesh(legGeo, mat);
+        const legR = new THREE.Mesh(legGeo, bodyMat);
         legR.position.set(0.11 * scaleXZ, 0.325 * scaleY, 0);
         legR.castShadow = true;
         bodyGroup.add(legR);
 
         const armGeo = new THREE.CylinderGeometry(0.065 * scaleXZ, 0.05 * scaleXZ, 0.55 * scaleY, 12);
-        const armL = new THREE.Mesh(armGeo, mat);
+        const armL = new THREE.Mesh(armGeo, bodyMat);
         armL.position.set((-torsoTopWidth - 0.05) * scaleXZ, 1.1 * scaleY, 0);
         armL.rotation.z = 0.15;
         armL.castShadow = true;
         bodyGroup.add(armL);
 
-        const armR = new THREE.Mesh(armGeo, mat);
+        const armR = new THREE.Mesh(armGeo, bodyMat);
         armR.position.set((torsoTopWidth + 0.05) * scaleXZ, 1.1 * scaleY, 0);
         armR.rotation.z = -0.15;
         armR.castShadow = true;
@@ -1455,7 +1451,7 @@
 
       const auraGeo = new THREE.RingGeometry(0.55 * scaleXZ, 0.75 * scaleXZ, 32);
       auraGeo.rotateX(-Math.PI / 2);
-      const auraMat = new THREE.MeshBasicMaterial({ color: EMOTION_COLORS.neutral, side: THREE.DoubleSide });
+      const auraMat = new THREE.MeshBasicMaterial({ color: initialClothesColor, side: THREE.DoubleSide });
       const aura = new THREE.Mesh(auraGeo, auraMat);
       aura.position.y = 0.02;
       group.add(aura);
@@ -1469,7 +1465,8 @@
 
       group.userData = {
         bodyGroup,
-        bodyMaterial: mat,
+        bodyMaterial: bodyMat,
+        clothesMaterial: clothesMat,
         auraMesh: aura,
         labelCanvas: canvas,
         labelTexture: texture,
@@ -1548,8 +1545,12 @@
       const colorHex = EMOTION_COLORS[emotionKey] || EMOTION_COLORS.neutral;
 
       if (avatarGroup.userData.auraMesh) avatarGroup.userData.auraMesh.material.color.setHex(colorHex);
-      if (avatarGroup.userData.bodyMaterial && !avatarGroup.userData.type.startsWith('lego-')) {
-        avatarGroup.userData.bodyMaterial.color.setHex(colorHex);
+      
+      const isLego = avatarGroup.userData.type && avatarGroup.userData.type.startsWith('lego-');
+      if (isLego) {
+        if (avatarGroup.userData.clothesMaterial) avatarGroup.userData.clothesMaterial.color.setHex(colorHex);
+      } else {
+        if (avatarGroup.userData.bodyMaterial) avatarGroup.userData.bodyMaterial.color.setHex(colorHex);
       }
 
       const posture = avatarGroup.userData.posture;
