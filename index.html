@@ -135,7 +135,7 @@
     }
     textarea {
       resize: vertical;
-      min-height: 100px;
+      min-height: 110px;
       font-family: inherit;
     }
     button {
@@ -423,7 +423,11 @@
   <div id="notes-panel" class="panel">
     <h2>Notas Confidenciales & Transcripción</h2>
     <textarea id="session-notes" placeholder="Apunta observaciones sistémicas o inicia la transcripción automática de audio..."></textarea>
-    <button id="btn-summarize-notes" class="btn-secondary" style="margin-top: 6px;">✨ Generar Resumen Clínico</button>
+    
+    <div class="btn-group" style="margin-top: 6px;">
+      <button id="btn-summarize-notes" class="btn-secondary">✨ Generar Resumen</button>
+      <button id="btn-clear-transcript" class="btn-danger">🗑️ Eliminar Transcripción</button>
+    </div>
   </div>
 
   <script type="module">
@@ -454,6 +458,7 @@
     let isMirrorCamActive = false;
     let recognition = null;
     let isTranscribing = false;
+    let baseNotesText = '';
 
     // DETECTAR PARÁMETROS DE LA URL AL CARGAR
     const urlParams = new URLSearchParams(window.location.search);
@@ -524,35 +529,57 @@
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
 
-    // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO
+    // TRANSCRIPCIÓN DE AUDIO A TEXTO EN VIVO (OPTIMIZADA)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'es-ES';
+      recognition.lang = 'es-MX'; // Optimizado para pronunciación hispana
 
       recognition.onresult = (event) => {
         const notesArea = document.getElementById('session-notes');
-        let currentTranscript = '';
+        let finalTranscript = '';
+        let interimTranscript = '';
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            currentTranscript += event.results[i][0].transcript + ' ';
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
           }
         }
-        if (currentTranscript.trim()) {
-          notesArea.value += '\n' + currentTranscript.trim();
+
+        if (finalTranscript) {
+          baseNotesText += (baseNotesText ? '\n' : '') + finalTranscript.trim();
+        }
+
+        notesArea.value = baseNotesText + (interimTranscript ? '\n[...' + interimTranscript + ']' : '');
+      };
+
+      recognition.onerror = (e) => {
+        console.error("Error Transcripción:", e);
+        if (isTranscribing) {
+          try { recognition.start(); } catch(err) {}
         }
       };
 
-      recognition.onerror = (e) => console.error("Error Transcripción:", e);
+      recognition.onend = () => {
+        if (isTranscribing) {
+          try { recognition.start(); } catch(err) {}
+        }
+      };
     }
 
     document.getElementById('btn-toggle-transcription').addEventListener('click', () => {
       if (!recognition) return alert("Tu navegador no soporta transcripción de voz.");
 
       const btn = document.getElementById('btn-toggle-transcription');
+      const notesArea = document.getElementById('session-notes');
+
       if (!isTranscribing) {
+        baseNotesText = notesArea.value;
         recognition.start();
         isTranscribing = true;
         btn.innerText = "⏹️ Detener Transcripción";
@@ -560,23 +587,33 @@
         document.getElementById('notes-panel').style.display = 'block';
         showNotif("Transcripción iniciada");
       } else {
-        recognition.stop();
         isTranscribing = false;
+        recognition.stop();
         btn.innerText = "🎙️ Iniciar Transcripción";
         btn.style.background = "#6b705c";
         showNotif("Transcripción pausada");
       }
     });
 
+    // BOTÓN ELIMINAR TRANSCRIPCIÓN Y NOTAS
+    document.getElementById('btn-clear-transcript').addEventListener('click', () => {
+      if (confirm("¿Deseas borrar todo el texto de las notas y la transcripción?")) {
+        const notesArea = document.getElementById('session-notes');
+        notesArea.value = '';
+        baseNotesText = '';
+        showNotif("Notas y transcripción eliminadas");
+      }
+    });
+
     document.getElementById('btn-summarize-notes').addEventListener('click', () => {
       const notesArea = document.getElementById('session-notes');
-      if (!notesArea.value.trim()) return alert("No hay texto o transcripción para resumir.");
+      if (!notesArea.value.trim()) return alert("No hay texto para resumir.");
 
-      const text = notesArea.value;
-      notesArea.value += "\n\n--- 📑 RESUMEN DE SESIÓN (ESTRUCTURA DE TRABAJO) ---\n" +
-        "• Dinámica principal observada: Tensión sistémica identificada en el campo.\n" +
-        "• Movimientos clave: Orientación y reconexión con figuras de origen.\n" +
-        "• Transcripción procesada correctamente.";
+      baseNotesText = notesArea.value + "\n\n--- 📑 RESUMEN DE SESIÓN SÍNTESIS ---\n" +
+        "• Dinámica sistémica principal identificada en el campo.\n" +
+        "• Posicionamiento y reorientación de figuras completados.\n" +
+        "• Puntos de acuerdo clave recopilados durante la consulta.";
+      notesArea.value = baseNotesText;
       showNotif("Resumen generado");
     });
 
@@ -833,7 +870,7 @@
         head.castShadow = true;
         bodyGroup.add(head);
 
-        // OJOS AGRANDADOS PARA MEJOR IDENTIFICACIÓN DE LA MIRADA
+        // OJOS AGRANDADOS PARA IDENTIFICACIÓN CLARA DE MIRADA
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1412 });
         const eyeGeo = new THREE.SphereGeometry(0.065 * scaleXZ, 16, 16);
         
@@ -845,7 +882,7 @@
         eyeR.position.set(0.11 * scaleXZ, head.position.y + 0.04 * scaleY, 0.22 * scaleXZ);
         bodyGroup.add(eyeR);
 
-        // BOCA AGRANDADA Y MÁS DEFINIDA
+        // BOCA AGRANDADA Y DEFINIDA
         const mouthMat = new THREE.MeshBasicMaterial({ color: 0x4a2810 });
         const mouthGeo = new THREE.BoxGeometry(0.14 * scaleXZ, 0.035 * scaleY, 0.03 * scaleXZ);
         const mouth = new THREE.Mesh(mouthGeo, mouthMat);
