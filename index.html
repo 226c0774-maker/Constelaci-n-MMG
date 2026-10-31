@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.5</title>
+  <title>Constelaciones Familiares - Lainez 3D Pro Suite v1.6</title>
   <style>
     * {
       box-sizing: border-box;
@@ -132,7 +132,7 @@
       pointer-events: none;
     }
 
-    /* UBICACIÓN DE LAS VENTANAS DE CÁMARA FLANQUEANDO EL MENÚ CENTRAL */
+    /* VENTANAS DE CÁMARA A LOS LADOS DEL MENÚ CENTRAL */
     .video-box {
       position: absolute;
       top: 14px;
@@ -164,13 +164,13 @@
       border-radius: 4px;
     }
 
-    /* VENTANA LOCAL ("TÚ") A LA IZQUIERDA DE FOCUS */
+    /* VENTANA LOCAL ("TÚ") */
     #local-video-box {
       right: calc(50% + 225px);
       border-color: rgba(88, 129, 87, 0.6);
     }
 
-    /* VENTANA REMOTA ("PARTICIPANTE / OTRO") A LA DERECHA DE CONECTAR CÁMARA */
+    /* VENTANA REMOTA ("PARTICIPANTE") */
     #remote-video-box {
       left: calc(50% + 225px);
       border-color: rgba(69, 123, 157, 0.6);
@@ -403,13 +403,14 @@
 <body>
 
   <div id="canvas-container"></div>
-  <div class="version-tag">Lainez 3D Pro Suite v1.5</div>
+  <div class="version-tag">Lainez 3D Pro Suite v1.6</div>
   
   <!-- BARRA CENTRAL DE BOTONES -->
   <div id="top-bar">
     <button id="view-toggle-btn" class="top-btn">👁️ Focus</button>
     <button id="audio-toggle-btn" class="top-btn">🎙️ Conectar Audio</button>
     <button id="video-toggle-btn" class="top-btn">📹 Conectar Cámara</button>
+    <button id="remote-play-btn" class="top-btn btn-warning" style="display: none;">📺 Ver Participante</button>
   </div>
 
   <!-- VENTANA "TÚ" A LA IZQUIERDA DE FOCUS -->
@@ -420,7 +421,7 @@
 
   <!-- VENTANA "PARTICIPANTE" A LA DERECHA DE CONECTAR CÁMARA -->
   <div id="remote-video-box" class="video-box" style="display: none;">
-    <video id="remote-video" autoplay playsinline muted></video>
+    <video id="remote-video" autoplay playsinline></video>
     <span id="remote-video-label" class="video-label">Participante</span>
   </div>
 
@@ -624,9 +625,8 @@
       }
     }
 
-    // WEBRTC EN TIEMPO REAL
+    // WEBRTC BIDIRECCIONAL EN TIEMPO REAL
     let localStream = null;
-    let remoteStream = new MediaStream();
     let peerConnection = null;
     let isAudioConnected = false;
     let isVideoConnected = false;
@@ -640,7 +640,7 @@
     };
 
     signInAnonymously(auth)
-      .then(() => showNotif("Conectado a Backend (v1.5)"))
+      .then(() => showNotif("Conectado a Backend (v1.6)"))
       .catch((err) => console.error("Error Auth:", err));
 
     function showNotif(msg) {
@@ -685,7 +685,7 @@
       return avatars.find(a => a.userData.id === selectedAvatarId) || null;
     }
 
-    // CÁMARA Y VIDEO WEBRTC BIDIRECCIONAL
+    // CÁMARA LOCAL Y REMOTA
     async function toggleVideoConnection() {
       const videoBtn = document.getElementById('video-toggle-btn');
       const localBox = document.getElementById('local-video-box');
@@ -714,7 +714,7 @@
           if (!peerConnection) {
             setupWebRTCConnection();
           } else {
-            localStream.getVideoTracks().forEach(track => {
+            localStream.getTracks().forEach(track => {
               peerConnection.addTrack(track, localStream);
             });
           }
@@ -740,6 +740,14 @@
     }
 
     document.getElementById('video-toggle-btn').addEventListener('click', toggleVideoConnection);
+
+    document.getElementById('remote-play-btn').addEventListener('click', () => {
+      const remoteVideo = document.getElementById('remote-video');
+      remoteVideo.play().then(() => {
+        document.getElementById('remote-play-btn').style.display = 'none';
+        showNotif("Video del participante activado");
+      }).catch(err => console.error(err));
+    });
 
     // TRANSCRIPCIÓN EN VIVO
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1089,18 +1097,19 @@
         const remoteVideo = document.getElementById('remote-video');
         const remoteBox = document.getElementById('remote-video-box');
 
-        event.streams[0].getTracks().forEach(track => {
-          remoteStream.addTrack(track);
-        });
-
         if (event.track.kind === 'audio') {
-          remoteAudio.srcObject = remoteStream;
+          remoteAudio.srcObject = event.streams[0];
         }
         if (event.track.kind === 'video') {
-          remoteVideo.srcObject = remoteStream;
+          remoteVideo.srcObject = event.streams[0];
           remoteBox.style.display = 'block';
-          remoteVideo.play().catch(e => console.log("Autoplay video permitido"));
-          showNotif("Cámara del participante recibida");
+
+          remoteVideo.play().then(() => {
+            showNotif("Cámara del participante recibida");
+          }).catch(err => {
+            console.log("Autoplay bloqueado:", err);
+            document.getElementById('remote-play-btn').style.display = 'block';
+          });
         }
       };
 
