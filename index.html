@@ -234,7 +234,7 @@
       background: rgba(255,255,255,0.1);
       margin-left: 4px;
     }
-    /* Status Badge */
+    /* Status Badge & Animación de Desconexión */
     .status-box {
       font-size: 0.73rem;
       padding: 5px 8px;
@@ -263,6 +263,18 @@
       border-radius: 50%;
       display: inline-block;
     }
+    .dot-disconnected {
+      height: 8px;
+      width: 8px;
+      background-color: #e63946;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px #e63946;
+      animation: blinker 1s linear infinite;
+    }
+    @keyframes blinker {
+      50% { opacity: 0.2; }
+    }
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -289,17 +301,19 @@
       <input type="text" id="user-name" placeholder="Ej. Consultante">
     </div>
 
-    <!-- Sección exclusiva de Creación (Se oculta si es consultante) -->
+    <!-- Sección de Creación / Unirse -->
     <div id="host-create-section">
       <button id="btn-create-room" class="btn-secondary">Crear Nueva Sala (Anfitrión)</button>
-      <div style="margin: 8px 0; text-align: center; font-size: 0.72rem; color: #ddb892;">— O ÚNETE A UNA —</div>
     </div>
 
-    <div class="input-group">
-      <label for="room-code-input">Código de Sala:</label>
-      <input type="text" id="room-code-input" placeholder="Ej. X8A2K9">
+    <div id="join-section">
+      <div style="margin: 8px 0; text-align: center; font-size: 0.72rem; color: #ddb892;">— O ÚNETE A UNA —</div>
+      <div class="input-group">
+        <label for="room-code-input">Código de Sala:</label>
+        <input type="text" id="room-code-input" placeholder="Ej. X8A2K9">
+      </div>
+      <button id="btn-join-room">Unirse a la Sala</button>
     </div>
-    <button id="btn-join-room">Unirse a la Sala</button>
 
     <div id="room-info">
       <span id="room-status-text">Estado: Modo local activo</span>
@@ -493,6 +507,7 @@
           });
         });
 
+        document.getElementById('join-section').style.display = 'none';
         document.getElementById('host-controls').style.display = 'block';
       } else {
         roomInfo.innerHTML = `<div>Conectado a Sala: <b>${roomId}</b></div>`;
@@ -557,10 +572,20 @@
       if (isHost || !currentRoomId) return;
       const roomRef = doc(db, "rooms", currentRoomId);
       setDoc(roomRef, {
+        clientConnected: true,
+        lastActive: Date.now(),
         clientCameraPos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
         clientCameraTarget: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
       }, { merge: true }).catch(err => console.error(err));
     }
+
+    // NOTIFICAR DESCONEXIÓN AL CERRAR PESTAÑA
+    window.addEventListener('beforeunload', () => {
+      if (!isHost && currentRoomId) {
+        const roomRef = doc(db, "rooms", currentRoomId);
+        setDoc(roomRef, { clientConnected: false }, { merge: true });
+      }
+    });
 
     // AUDIO CONTROL
     async function toggleAudioConnection() {
@@ -1186,12 +1211,15 @@
       currentRoomId = roomId;
       updateRoomInfoUI(roomId);
 
-      // Notificar al backend que el consultante se conectó
       const roomRef = doc(db, "rooms", roomId);
       await setDoc(roomRef, {
         clientConnected: true,
+        lastActive: Date.now(),
         clientName: userName
       }, { merge: true });
+
+      // Iniciar latido para informar presencia
+      setInterval(() => publishClientCameraState(), 3000);
 
       listenToRoom(roomId);
       showNotif(`Unido a ${roomId} (Modo Consultante)`);
@@ -1206,16 +1234,19 @@
         if (isHost) {
           const clientNameSpan = document.getElementById('client-name-status');
           const clientDot = document.getElementById('client-dot');
+          const isRecentlyActive = data.lastActive && (Date.now() - data.lastActive < 8000);
 
-          if (data.clientConnected) {
+          if (data.clientConnected && isRecentlyActive) {
             clientNameSpan.innerText = `${data.clientName || 'Consultante'}: Conectado`;
             clientDot.className = 'dot-online';
+          } else if (data.clientName && data.clientName !== 'Ausente') {
+            clientNameSpan.innerText = `${data.clientName}: Desconectado`;
+            clientDot.className = 'dot-disconnected';
           } else {
             clientNameSpan.innerText = 'Consultante: Ausente';
             clientDot.className = 'dot-offline';
           }
 
-          // Ver tablero del consultante en tiempo real (Mirror Mode)
           if (isMirrorCamActive && data.clientCameraPos && data.clientCameraTarget) {
             camera.position.set(data.clientCameraPos.x, data.clientCameraPos.y, data.clientCameraPos.z);
             controls.target.set(data.clientCameraTarget.x, data.clientCameraTarget.y, data.clientCameraTarget.z);
